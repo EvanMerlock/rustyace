@@ -30,6 +30,10 @@ pub enum GLMode {
     Patches                 = gl::PATCHES as isize,
 }
 
+// TODO: Figure out if we need to split models into meshes (we probably do)
+// And the best way to communicate data to the GPU.
+// With nalgebra, we might be able to augment matricies by column in order to add more information
+// So then we could have separate color/lighting/texture matricies
 pub trait Model {
     fn get_vertices(&self)  -> &Vec<f32>;
     fn vertices_len(&self)  -> i32;

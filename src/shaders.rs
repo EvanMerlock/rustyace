@@ -5,6 +5,7 @@ use std::fmt;
 use std::ffi::CString;
 use std::collections::HashMap;
 
+// TODO: Load all shaders from file!!!
 pub const BASIC_VERTEX_SHADER: &'static str = include_str!("../shaders/basic_vert_shader.vs");
 pub const BASIC_FRAGMENT_SHADER: &'static str = include_str!("../shaders/basic_frag_shader.fs");
 
@@ -98,6 +99,7 @@ impl ShaderProgram {
         }
     }
 
+    // TODO:
     // Determine the best method for having shaders in multiple places
     // Probably have a ShaderRef object that can only last as long as Shader
     // Since shaders should only be able to be deleted when they're all unlinked
