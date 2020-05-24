@@ -1,0 +1,19 @@
+[package]
+name = "rustyace"
+version = "0.1.0"
+authors = ["Evan Merlock <vnmrlck@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+glfw = "0.37.0"
+nalgebra = { version = "0.21.0", features = ["serde-serialize"] }
+serde = { version = "1.0.110", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+
+[build-dependencies]
+gl_generator = "0.14.0"
