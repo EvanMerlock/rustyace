@@ -3,16 +3,19 @@ use super::gl;
 use super::buffers;
 use std::rc::Rc;
 use std::mem;
+use std::ptr;
 use super::shaders::CompiledShaderProgram;
 
-pub const TRI_VERTICES: [f32; 9] = [
-    -0.5, -0.5, 0.0,
-     0.5, -0.5, 0.0,
-     0.0,  0.5, 0.0
+pub const TRI_VERTICES: [f32; 12] = [
+    0.5,  0.5, 0.0,  // top right
+    0.5, -0.5, 0.0,  // bottom right
+   -0.5, -0.5, 0.0,  // bottom left
+   -0.5,  0.5, 0.0   // top left 
 ];
 
-pub const TRI_INDICES: [i32; 3] = [
-    0, 1, 2
+pub const TRI_INDICES: [u32; 6] = [
+    0, 1, 3,   // first triangle
+    1, 2, 3    // second triangle
 ];
 
 pub enum GLMode {
@@ -38,7 +41,7 @@ pub trait Model {
     fn get_vertices(&self)  -> &Vec<f32>;
     fn vertices_len(&self)  -> i32;
     fn vertices_size(&self) -> isize;
-    fn get_indices(&self)   -> &Vec<i32>;
+    fn get_indices(&self)   -> &Vec<u32>;
     fn indices_len(&self)   -> i32;
     fn get_shader(&self)    -> &Rc<CompiledShaderProgram>;
 }
@@ -46,13 +49,13 @@ pub trait Model {
 pub struct ResidentModel {
     vertices: Vec<f32>,
     vert_len: i32,
-    indices: Vec<i32>,
+    indices: Vec<u32>,
     index_len: i32,
     shader: Rc<CompiledShaderProgram>,
 }
 
 impl ResidentModel {
-    pub fn new(vert: &[f32], indices: &[i32], shdr_prog: Rc<CompiledShaderProgram>) -> ResidentModel {
+    pub fn new(vert: &[f32], indices: &[u32], shdr_prog: Rc<CompiledShaderProgram>) -> ResidentModel {
         let vertices = vert.to_vec();
         let indexes = indices.to_vec();
         let vert_len = vertices.len() as i32;
@@ -80,7 +83,7 @@ impl Model for ResidentModel {
         (self.vertices_len() * mem::size_of::<f32>() as i32) as isize
     }
 
-    fn get_indices(&self) -> &Vec<i32> {
+    fn get_indices(&self) -> &Vec<u32> {
         &self.indices
     }
 
@@ -98,6 +101,7 @@ pub struct Renderable {
     model: Rc<dyn Model>,
     vao: buffers::VertexArrayObj,
     vbo: buffers::VertexBufferObj,
+    ebo: buffers::ElementArrayObj,
 }
 
 impl Renderable {
@@ -105,16 +109,20 @@ impl Renderable {
     pub fn new(gl_ctx: Rc<gl::Gl>, model: Rc<dyn Model>, attrib_spec: impl Fn(&mut buffers::VertexArrayObj) -> ()) -> Result<Renderable, gl_error::OpenGLError> {
         let mut vertex_array = buffers::VertexArrayObj::new(gl_ctx.clone());
         let vertex_buffer = buffers::VertexBufferObj::new(gl_ctx.clone());
+        let element_buffer = buffers::ElementArrayObj::new(gl_ctx.clone());
 
         vertex_array.bind();
         vertex_buffer.bind();
+        element_buffer.bind();
         vertex_buffer.copy_to_buffer(&model, buffers::DrawMode::StaticDraw);
+        element_buffer.copy_to_buffer(&model, buffers::DrawMode::StaticDraw);
         attrib_spec(&mut vertex_array);
         Ok(Renderable {
             gl_ctx: gl_ctx,
             model: model,
             vao: vertex_array,
             vbo: vertex_buffer,
+            ebo: element_buffer,
         })    
     }
 
@@ -122,7 +130,7 @@ impl Renderable {
         self.model.get_shader().use_program();
         self.vao.bind();
         unsafe {
-            self.gl_ctx.DrawArrays(array_dmode as u32, 0, self.model.vertices_len());
+            self.gl_ctx.DrawElements(array_dmode as u32, self.model.indices_len(), buffers::GLType::UnsignedInt.into(), ptr::null());
         }
         Ok(())
     }
