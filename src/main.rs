@@ -41,10 +41,10 @@ fn main() -> Result<(), gl_error::OpenGLError> {
     let frag_shdr = shaders::Shader::new(gl_context.clone(), shaders::BASIC_FRAGMENT_SHADER, shaders::ShaderType::FragmentShader);
 
     let mut shdr_prog = shaders::ShaderProgram::new(gl_context.clone());
-    shdr_prog.attach_shader(vert_shdr)?;
-    shdr_prog.attach_shader(frag_shdr)?;
+    shdr_prog.attach_shader(&vert_shdr)?;
+    shdr_prog.attach_shader(&frag_shdr)?;
 
-    let assembled_shader = Rc::new(shaders::CompiledShaderProgram::compile_shader(gl_context.clone(), shdr_prog)?);
+    let assembled_shader = Rc::new(shaders::CompiledShaderProgram::compile_shader(gl_context.clone(), shdr_prog).map_err(|(err, _)| err)?);
 
     // TODO: Develop a model file format or use a pre-existing one
     // The only reason we would develop our own model file format is that this is designed to be a voxel engine;

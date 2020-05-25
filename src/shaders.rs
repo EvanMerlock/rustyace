@@ -92,14 +92,14 @@ impl Drop for Shader {
 }
 
 #[derive(Debug)]
-pub struct ShaderProgram {
+pub struct ShaderProgram<'a> {
     gl_ctx: Rc<gl::Gl>,
     id: u32,
-    loaded_phases: HashMap<ShaderType, Shader>,
+    loaded_phases: HashMap<ShaderType, &'a Shader>,
 }
 
-impl ShaderProgram {
-    pub fn new(gl_ctx: Rc<gl::Gl>) -> ShaderProgram {
+impl<'a> ShaderProgram<'a> {
+    pub fn new(gl_ctx: Rc<gl::Gl>) -> ShaderProgram<'a> {
         let prog_id;
         unsafe {
             prog_id = gl_ctx.CreateProgram();
@@ -116,7 +116,7 @@ impl ShaderProgram {
     // Probably have a ShaderRef object that can only last as long as Shader
     // Since shaders should only be able to be deleted when they're all unlinked
     // And when we compile a shader we will unlink it before converting it to a CompiledShaderProgram.
-    pub fn attach_shader(&mut self, shader: Shader) -> Result<(), OpenGLError> {
+    pub fn attach_shader(&mut self, shader: &'a Shader) -> Result<(), OpenGLError> {
         if self.loaded_phases.contains_key(&(&shader).sdr_type) {
             // We tried to attach an already attached shader to this program!
             return Err(OpenGLError::ProgramAlreadyContainedShader(shader.sdr_type));
@@ -138,7 +138,7 @@ pub struct CompiledShaderProgram {
 }
 
 impl CompiledShaderProgram {
-    pub fn compile_shader(gl_ctx: Rc<gl::Gl>, prog: ShaderProgram) -> Result<CompiledShaderProgram, OpenGLError> {
+    pub fn compile_shader(gl_ctx: Rc<gl::Gl>, prog: ShaderProgram) -> Result<CompiledShaderProgram, (OpenGLError, ShaderProgram)> {
         unsafe {
             gl_ctx.LinkProgram(prog.id);
             let mut result_code = 0;
@@ -146,7 +146,7 @@ impl CompiledShaderProgram {
             if result_code != 0 {
                 let mut character_output: [u8; 512] = [0; 512];
                 gl_ctx.GetShaderInfoLog(prog.id, 512, ptr::null_mut(), character_output.as_mut_ptr() as *mut i8);
-                return Err(OpenGLError::LinkerError(prog, String::from_utf8_unchecked(character_output.to_vec())));
+                return Err((OpenGLError::LinkerError(String::from_utf8_unchecked(character_output.to_vec())), prog));
             }
             for (_,v) in prog.loaded_phases.iter() {
                 gl_ctx.DetachShader(prog.id, v.id)
