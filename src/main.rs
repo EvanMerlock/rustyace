@@ -1,6 +1,8 @@
 use glfw::{Action, Context, Key};
 use std::rc::Rc;
-use std::mem;
+use std::{io, mem};
+use thiserror::Error;
+
 
 mod buffers;
 mod renderable;
@@ -19,7 +21,7 @@ mod gl {
     }
 }
 
-fn main() -> Result<(), gl_error::OpenGLError> {
+fn main() -> Result<(), RustyAceError> {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
     // TODO: Read from configuration file to set some window defaults!
@@ -33,18 +35,7 @@ fn main() -> Result<(), gl_error::OpenGLError> {
         gl_context.Viewport(0,0,300,300);
     }
 
-    // TODO: Is there a better way of doing this? Probably. Develop that method out further.
-    // Perhaps a function to read multiple shaders from files?
-    // That would probably be best as a method on CompiledShaderProgram, having it just take in the files and produce a CSP.
-    // That would allow for the skipping of these steps unless one needs them.
-    let vert_shdr = shaders::Shader::new(gl_context.clone(), shaders::BASIC_VERTEX_SHADER, shaders::ShaderType::VertexShader);
-    let frag_shdr = shaders::Shader::new(gl_context.clone(), shaders::BASIC_FRAGMENT_SHADER, shaders::ShaderType::FragmentShader);
-
-    let mut shdr_prog = shaders::ShaderProgram::new(gl_context.clone());
-    shdr_prog.attach_shader(&vert_shdr)?;
-    shdr_prog.attach_shader(&frag_shdr)?;
-
-    let assembled_shader = Rc::new(shaders::CompiledShaderProgram::compile_shader(gl_context.clone(), shdr_prog).map_err(|(err, _)| err)?);
+    let assembled_shader = Rc::new(shaders::CompiledShaderProgram::generate_program(gl_context.clone(), "./shaders/basic_vert_shader.vs", "./shaders/basic_frag_shader.fs", None)?);
 
     // TODO: Develop a model file format or use a pre-existing one
     // The only reason we would develop our own model file format is that this is designed to be a voxel engine;
@@ -109,5 +100,25 @@ fn handle_window_event(gl_context: &gl::Gl, window: &mut glfw::Window, event: gl
             }
         }
         _ => {}
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum RustyAceError {
+    #[error("OpenGL Failed: {0}")]
+    OpenGLError(gl_error::OpenGLError),
+    #[error("Asset Load Failed: {0}")]
+    IOError(io::Error),
+}
+
+impl From<gl_error::OpenGLError> for RustyAceError {
+    fn from(err: gl_error::OpenGLError) -> Self {
+        RustyAceError::OpenGLError(err)
+    }
+}
+
+impl From<io::Error> for RustyAceError {
+    fn from(err: io::Error) -> Self {
+        RustyAceError::IOError(err)
     }
 }

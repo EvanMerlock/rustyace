@@ -1,15 +1,15 @@
 use super::gl;
 use super::gl_error::OpenGLError;
+use super::RustyAceError;
 use std::rc::Rc;
 use std::ptr;
 use std::fmt;
 use std::ffi::CString;
 use std::collections::HashMap;
-
-// TODO: Load all shaders from file!!!
-pub const BASIC_VERTEX_SHADER: &'static str = include_str!("../shaders/basic_vert_shader.vs");
-pub const BASIC_FRAGMENT_SHADER: &'static str = include_str!("../shaders/basic_frag_shader.fs");
-
+use std::io;
+use std::io::prelude::*;
+use std::fs;
+use std::path::Path;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum ShaderType {
@@ -48,6 +48,10 @@ pub struct Shader {
 
 impl Shader {
     pub fn new(gl_ctx: Rc<gl::Gl>, src: &str, shader_type: ShaderType) -> Shader {
+        Shader::new_from_string(gl_ctx, src.to_owned(), shader_type)
+    }
+
+    fn new_from_string(gl_ctx: Rc<gl::Gl>, src: String, shader_type: ShaderType) -> Shader {
         let sdr_id;
         unsafe {
             sdr_id = gl_ctx.CreateShader((&shader_type).into());
@@ -56,8 +60,23 @@ impl Shader {
             gl_ctx: gl_ctx,
             sdr_type: shader_type,
             id: sdr_id,
-            src: src.to_owned(),
+            src: src,
         }
+    }
+
+    pub fn from_path<S: AsRef<Path>>(gl_ctx: Rc<gl::Gl>, loc: S, shader_type: ShaderType) -> io::Result<Shader> {
+        let file = fs::File::open(loc)?;
+        let md = file.metadata()?;
+        let buffered = io::BufReader::new(file);
+        let mut src = String::with_capacity(md.len() as usize);
+        for line_res in buffered.lines() {
+            let mut line = line_res?;
+            line.push('\n');
+            src.push_str(&line);
+        }
+
+        Ok(Shader::new(gl_ctx, &src, shader_type))
+
     }
 
     pub fn compile_shader(&self) -> Result<(), OpenGLError> {
@@ -111,11 +130,6 @@ impl<'a> ShaderProgram<'a> {
         }
     }
 
-    // TODO:
-    // Determine the best method for having shaders in multiple places
-    // Probably have a ShaderRef object that can only last as long as Shader
-    // Since shaders should only be able to be deleted when they're all unlinked
-    // And when we compile a shader we will unlink it before converting it to a CompiledShaderProgram.
     pub fn attach_shader(&mut self, shader: &'a Shader) -> Result<(), OpenGLError> {
         if self.loaded_phases.contains_key(&(&shader).sdr_type) {
             // We tried to attach an already attached shader to this program!
@@ -156,6 +170,29 @@ impl CompiledShaderProgram {
                 id: prog.id
             })
         }
+    }
+
+    pub fn generate_program<S: AsRef<Path>>(gl_ctx: Rc<gl::Gl>, vs_path: S, fs_path: S, gs_path: Option<S>) -> Result<CompiledShaderProgram, RustyAceError> {
+        let mut shdr_prog = ShaderProgram::new(gl_ctx.clone());
+        let vs_shdr = Shader::from_path(gl_ctx.clone(), vs_path, ShaderType::VertexShader)?;
+        vs_shdr.compile_shader()?;
+        let fs_shdr = Shader::from_path(gl_ctx.clone(), fs_path, ShaderType::FragmentShader)?;
+        fs_shdr.compile_shader()?;
+        shdr_prog.attach_shader(&vs_shdr)?;
+        shdr_prog.attach_shader(&fs_shdr)?;
+
+        match gs_path {
+            Some(gs_loc) => {
+                let gs_shdr = Shader::from_path(gl_ctx.clone(), gs_loc, ShaderType::GeometryShader)?;
+                shdr_prog.attach_shader(&gs_shdr)?;
+                Ok(CompiledShaderProgram::compile_shader(gl_ctx.clone(), shdr_prog).map_err(|(err, _)| err)?)
+            },
+            None => {
+                Ok(CompiledShaderProgram::compile_shader(gl_ctx.clone(), shdr_prog).map_err(|(err, _)| err)?)
+            },
+        }
+
+
     }
 
     pub fn use_program(&self) {
