@@ -18,82 +18,86 @@ pub enum DrawMode {
 
 
 pub struct VertexBufferObj {
+    gl_ctx: Rc<gl::Gl>,
     id: u32,
 }
 
 impl VertexBufferObj {
-    pub fn new(gl_ctx: &gl::Gl) -> VertexBufferObj {
+    pub fn new(gl_ctx: Rc<gl::Gl>) -> VertexBufferObj {
         let mut gl_id: u32 = 0;
         unsafe {
             gl_ctx.GenBuffers(1, &mut gl_id);
         }        
         VertexBufferObj {
+            gl_ctx: gl_ctx,
             id: gl_id
         }
     }
 
-    pub fn bind(&self, gl_ctx: &gl::Gl) {
+    pub fn bind(&self) {
         unsafe {
-            gl_ctx.BindBuffer(gl::ARRAY_BUFFER, self.id);
+            self.gl_ctx.BindBuffer(gl::ARRAY_BUFFER, self.id);
         }
     }
 
-    pub fn unbind(&self, gl_ctx: &gl::Gl) {
+    pub fn unbind(&self) {
         unsafe {
-            gl_ctx.BindBuffer(gl::ARRAY_BUFFER, 0);
+            self.gl_ctx.BindBuffer(gl::ARRAY_BUFFER, 0);
         }
     }
 
-    pub fn copy_to_buffer(&self, gl_ctx: &gl::Gl, vertices: &Rc<dyn Model>, draw_mode: DrawMode) {
-        self.bind(gl_ctx);
+    pub fn copy_to_buffer(&self, vertices: &Rc<dyn Model>, draw_mode: DrawMode) {
+        self.bind();
         unsafe {
-            self._copy_to_buffer(gl_ctx, vertices.get_vertices(), (vertices.vertices_len() as isize * vertices.vertices_size()), draw_mode);
+            self._copy_to_buffer(vertices.get_vertices(), (vertices.vertices_len() as isize * vertices.vertices_size()), draw_mode);
         }
     }
 
-    unsafe fn _copy_to_buffer(&self, gl_ctx: &gl::Gl, verticies: &[f32], size: isize, draw_mode: DrawMode) {
-        gl_ctx.BufferData(gl::ARRAY_BUFFER, size, verticies.as_ptr() as *const _, draw_mode as u32);
+    unsafe fn _copy_to_buffer(&self, vertices: &[f32], size: isize, draw_mode: DrawMode) {
+        self.gl_ctx.BufferData(gl::ARRAY_BUFFER, size, vertices.as_ptr() as *const _, draw_mode as u32);
     }
 }
 
 pub struct VertexArrayObj {
+    gl_ctx: Rc<gl::Gl>,
     id: u32,
     attributes: HashMap<u32, AttributeProperties>,
 }
 
 impl VertexArrayObj {
-    pub fn new(gl_ctx: &gl::Gl) -> VertexArrayObj {
+    pub fn new(gl_ctx: Rc<gl::Gl>) -> VertexArrayObj {
         let mut gl_id: u32 = 0;
         unsafe {
             gl_ctx.GenVertexArrays(1, &mut gl_id);
         }
         VertexArrayObj {
+            gl_ctx: gl_ctx,
             id: gl_id,
             attributes: HashMap::new()
         }
     }
 
-    pub fn bind(&self, gl_ctx: &gl::Gl) {
+    pub fn bind(&self) {
         unsafe {
-            gl_ctx.BindVertexArray(self.id)
+            self.gl_ctx.BindVertexArray(self.id)
         }
     }
 
-    pub fn unbind(&self, gl_ctx: &gl::Gl) {
+    pub fn unbind(&self) {
         unsafe {
-            gl_ctx.BindVertexArray(0)
+            self.gl_ctx.BindVertexArray(0)
         }
     }
 
-    pub fn configure_index(&mut self, gl_ctx: &gl::Gl, index: u32, prop: AttributeProperties) {
+    pub fn configure_index(&mut self, index: u32, prop: AttributeProperties) {
         unsafe {
             if prop.normalized {
-                gl_ctx.VertexAttribPointer(index, prop.attrib_size as i32, prop.attrib_type.into(), gl::TRUE, prop.stride, prop.offset as *const _);
+                self.gl_ctx.VertexAttribPointer(index, prop.attrib_size as i32, prop.attrib_type.into(), gl::TRUE, prop.stride, prop.offset as *const _);
 
             } else {
-                gl_ctx.VertexAttribPointer(index, prop.attrib_size as i32, prop.attrib_type.into(), gl::FALSE, prop.stride, prop.offset as *const _);
+                self.gl_ctx.VertexAttribPointer(index, prop.attrib_size as i32, prop.attrib_type.into(), gl::FALSE, prop.stride, prop.offset as *const _);
             }
-            gl_ctx.EnableVertexAttribArray(index);
+            self.gl_ctx.EnableVertexAttribArray(index);
         }
         self.attributes.insert(index, prop);
     }

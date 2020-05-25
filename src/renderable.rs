@@ -94,6 +94,7 @@ impl Model for ResidentModel {
 }
 
 pub struct Renderable {
+    gl_ctx: Rc<gl::Gl>,
     model: Rc<dyn Model>,
     vao: buffers::VertexArrayObj,
     vbo: buffers::VertexBufferObj,
@@ -101,26 +102,27 @@ pub struct Renderable {
 
 impl Renderable {
 
-    pub fn new(gl_ctx: &gl::Gl, model: Rc<dyn Model>, attrib_spec: impl Fn(&gl::Gl, &mut buffers::VertexArrayObj) -> ()) -> Result<Renderable, gl_error::OpenGLError> {
-        let mut vertex_array = buffers::VertexArrayObj::new(gl_ctx);
-        let vertex_buffer = buffers::VertexBufferObj::new(gl_ctx);
+    pub fn new(gl_ctx: Rc<gl::Gl>, model: Rc<dyn Model>, attrib_spec: impl Fn(&mut buffers::VertexArrayObj) -> ()) -> Result<Renderable, gl_error::OpenGLError> {
+        let mut vertex_array = buffers::VertexArrayObj::new(gl_ctx.clone());
+        let vertex_buffer = buffers::VertexBufferObj::new(gl_ctx.clone());
 
-        vertex_array.bind(gl_ctx);
-        vertex_buffer.bind(gl_ctx);
-        vertex_buffer.copy_to_buffer(gl_ctx, &model, buffers::DrawMode::StaticDraw);
-        attrib_spec(gl_ctx, &mut vertex_array);
+        vertex_array.bind();
+        vertex_buffer.bind();
+        vertex_buffer.copy_to_buffer(&model, buffers::DrawMode::StaticDraw);
+        attrib_spec(&mut vertex_array);
         Ok(Renderable {
+            gl_ctx: gl_ctx,
             model: model,
             vao: vertex_array,
             vbo: vertex_buffer,
         })    
     }
 
-    pub fn render(&self, gl_ctx: &gl::Gl, array_dmode: GLMode) -> Result<(), gl_error::OpenGLError> {
-        self.model.get_shader().use_program(gl_ctx);
-        self.vao.bind(gl_ctx);
+    pub fn render(&self, array_dmode: GLMode) -> Result<(), gl_error::OpenGLError> {
+        self.model.get_shader().use_program();
+        self.vao.bind();
         unsafe {
-            gl_ctx.DrawArrays(array_dmode as u32, 0, self.model.vertices_len());
+            self.gl_ctx.DrawArrays(array_dmode as u32, 0, self.model.vertices_len());
         }
         Ok(())
     }
