@@ -10,6 +10,8 @@ use std::io;
 use std::io::prelude::*;
 use std::fs;
 use std::path::Path;
+use std::borrow::Borrow;
+use nalgebra;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum ShaderType {
@@ -195,6 +197,15 @@ impl CompiledShaderProgram {
 
     }
 
+    pub(crate) fn set_uniform<T: UniformType>(&self, name: &str, uniform: &T) {
+        let loc: i32;
+        unsafe {
+            let c_str = CString::new(name).expect("Internal NULL detected. Uniform location failed to convert to valid CString");
+            loc = self.gl_ctx.GetUniformLocation(self.id, c_str.as_ptr());
+        }
+        uniform.assign_to_current_program(self.gl_ctx.as_ref(), loc);
+    }
+
     pub fn use_program(&self) {
         unsafe {
             self.gl_ctx.UseProgram(self.id);
@@ -204,6 +215,240 @@ impl CompiledShaderProgram {
     pub fn unbind_program(&self) {
         unsafe {
             self.gl_ctx.UseProgram(0);
+        }
+    }
+}
+
+pub(crate) trait UniformType {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32);
+}
+
+impl UniformType for f32 {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform1f(loc, *self);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector2<f32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform2f(loc, self[0], self[1]);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector3<f32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform3f(loc, self[0], self[1], self[2]);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector4<f32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform4f(loc, self[0], self[1], self[2], self[3]);
+        }
+    }
+}
+
+impl UniformType for &[f32] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform1fv(loc, self.len() as i32, self.as_ptr());
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector2<f32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform2fv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector3<f32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform3fv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector4<f32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform4fv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+// ---
+
+impl UniformType for i32 {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform1i(loc, *self);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector2<i32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform2i(loc, self[0], self[1]);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector3<i32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform3i(loc, self[0], self[1], self[2]);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector4<i32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform4i(loc, self[0], self[1], self[2], self[3]);
+        }
+    }
+}
+
+impl UniformType for &[i32] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform1iv(loc, self.len() as i32, self.as_ptr());
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector2<i32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform2iv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector3<i32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform3iv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector4<i32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform4iv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+// ---
+
+impl UniformType for u32 {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform1ui(loc, *self);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector2<u32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform2ui(loc, self[0], self[1]);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector3<u32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform3ui(loc, self[0], self[1], self[2]);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector4<u32> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform4ui(loc, self[0], self[1], self[2], self[3]);
+        }
+    }
+}
+
+impl UniformType for &[u32] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform1uiv(loc, self.len() as i32, self.as_ptr());
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector2<u32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform2uiv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector3<u32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform3uiv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+impl UniformType for &[nalgebra::Vector4<u32>] {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform4uiv(loc, self.len() as i32, self.as_ptr() as *const _);
+        }
+    }
+}
+
+// ---
+
+impl UniformType for bool {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform1i(loc, (*self) as i32);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector2<bool> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform2i(loc, self[0] as i32, self[1] as i32);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector3<bool> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform3i(loc, self[0] as i32, self[1] as i32, self[2] as i32);
+        }
+    }
+}
+
+impl UniformType for nalgebra::Vector4<bool> {
+    fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32) {
+        unsafe {
+            gl_ctx.Uniform4i(loc, self[0] as i32, self[1] as i32, self[2] as i32, self[3] as i32);
         }
     }
 }
