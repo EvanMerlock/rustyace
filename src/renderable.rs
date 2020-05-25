@@ -126,8 +126,13 @@ impl Renderable {
         })    
     }
 
-    pub fn render(&self, array_dmode: GLMode) -> Result<(), gl_error::OpenGLError> {
-        self.model.get_shader().use_program();
+    pub fn render(&self, array_dmode: GLMode, uniform_set: impl Fn(&CompiledShaderProgram) -> ()) -> Result<(), gl_error::OpenGLError> {
+        let shader = self.model.get_shader();
+        shader.use_program();
+
+        // temporary to test uniforms
+        uniform_set(shader.as_ref());
+
         self.vao.bind();
         unsafe {
             self.gl_ctx.DrawElements(array_dmode as u32, self.model.indices_len(), buffers::GLType::UnsignedInt.into(), ptr::null());

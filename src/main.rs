@@ -74,7 +74,10 @@ fn main() -> Result<(), RustyAceError> {
         // Like _that's_ going to be easy.
         // Physics will need to take into account time-steps
         // See if nphysics will work or if we'll need to do our own crude physics modeling
-        render.render(renderable::GLMode::Triangles)?;
+        render.render(renderable::GLMode::Triangles, |shader| {
+            let green_val = (glfw.get_time().sin() / 2.0f64 + 0.5f64) as f32;
+            shader.set_uniform("ourColor", &nalgebra::Vector4::<f32>::new(0.0, green_val, 0.0, 1.0));
+        })?;
 
 
         glfw.poll_events();
