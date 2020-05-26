@@ -1,16 +1,18 @@
 use super::gl_error;
 use super::gl;
 use super::buffers;
+use crate::types::*;
 use std::rc::Rc;
 use std::mem;
 use std::ptr;
 use super::shaders::CompiledShaderProgram;
 
-pub const TRI_VERTICES: [f32; 12] = [
-    0.5,  0.5, 0.0,  // top right
-    0.5, -0.5, 0.0,  // bottom right
-   -0.5, -0.5, 0.0,  // bottom left
-   -0.5,  0.5, 0.0   // top left 
+pub const TRI_VERTICES: [f32; 32] = [
+        // positions      // colors        // texture coords
+        0.5,  0.5, 0.0,   1.0, 0.0, 0.0,   1.0, 1.0, // top right
+        0.5, -0.5, 0.0,   0.0, 1.0, 0.0,   1.0, 0.0, // bottom right
+       -0.5, -0.5, 0.0,   0.0, 0.0, 1.0,   0.0, 0.0, // bottom left
+       -0.5,  0.5, 0.0,   1.0, 1.0, 0.0,   0.0, 1.0  // top left 
 ];
 
 pub const TRI_INDICES: [u32; 6] = [
@@ -18,24 +20,9 @@ pub const TRI_INDICES: [u32; 6] = [
     1, 2, 3    // second triangle
 ];
 
-pub enum GLMode {
-    Points                  = gl::POINTS as isize,
-    LineStrip               = gl::LINE_STRIP as isize,
-    LineLoop                = gl::LINE_LOOP as isize,
-    Lines                   = gl::LINES as isize,
-    LineStripAdjacency      = gl::LINE_STRIP_ADJACENCY as isize,
-    LinesAdjacency          = gl::LINES_ADJACENCY as isize,
-    TriangleStrip           = gl::TRIANGLE_STRIP as isize,
-    TriangleFan             = gl::TRIANGLE_FAN as isize,
-    Triangles               = gl::TRIANGLES as isize,
-    TriangleStripAdjacency  = gl::TRIANGLE_STRIP_ADJACENCY as isize,
-    TrianglesAdjacency      = gl::TRIANGLES_ADJACENCY as isize,
-    Patches                 = gl::PATCHES as isize,
-}
-
 // TODO: Figure out if we need to split models into meshes (we probably do)
 // And the best way to communicate data to the GPU.
-// With nalgebra, we might be able to augment matricies by column in order to add more information
+// With nalgebra, we might be able to augment matricies by row (since matricies are column-major) in order to add more information
 // So then we could have separate color/lighting/texture matricies
 pub trait Model {
     fn get_vertices(&self)  -> &Vec<f32>;
@@ -114,8 +101,8 @@ impl Renderable {
         vertex_array.bind();
         vertex_buffer.bind();
         element_buffer.bind();
-        vertex_buffer.copy_to_buffer(&model, buffers::DrawMode::StaticDraw);
-        element_buffer.copy_to_buffer(&model, buffers::DrawMode::StaticDraw);
+        vertex_buffer.copy_to_buffer(&model, DrawMode::StaticDraw);
+        element_buffer.copy_to_buffer(&model, DrawMode::StaticDraw);
         attrib_spec(&mut vertex_array);
         Ok(Renderable {
             gl_ctx: gl_ctx,
@@ -130,12 +117,13 @@ impl Renderable {
         let shader = self.model.get_shader();
         shader.use_program();
 
-        // temporary to test uniforms
+        // Sets per-frame uniforms
+        // For example, MVP matricies (specifically view and projection, since model should be passed into the program through the model data)
         uniform_set(shader.as_ref());
 
         self.vao.bind();
         unsafe {
-            self.gl_ctx.DrawElements(array_dmode as u32, self.model.indices_len(), buffers::GLType::UnsignedInt.into(), ptr::null());
+            self.gl_ctx.DrawElements(array_dmode as u32, self.model.indices_len(), GLType::UnsignedInt.into(), ptr::null());
         }
         Ok(())
     }

@@ -3,19 +3,12 @@ use crate::renderable::Model;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::mem;
+use crate::types::*;
 
-pub enum DrawMode {
-    StreamDraw = gl::STREAM_DRAW as isize,
-    StreamRead = gl::STREAM_READ as isize,
-    StreamCopy = gl::STREAM_COPY as isize,
-    StaticDraw = gl::STATIC_DRAW as isize,
-    StaticRead = gl::STATIC_READ as isize,
-    StaticCopy = gl::STATIC_COPY as isize,
-    DynamicDraw = gl::DYNAMIC_DRAW as isize,
-    DynamicRead = gl::DYNAMIC_READ as isize,
-    DynamicCopy = gl::DYNAMIC_COPY as isize,
-}
-
+// TODO:
+// Buffer objects/shaders are GLOBAL STATE.
+// We need a global lock for each type of buffer and shader programs, and then have buffers switch between a unbound and bound struct/state
+// This allows us to prevent mistakes from binding buffers incorrectly (rebinding over a buffer before it's been dropped)
 
 
 pub struct VertexBufferObj {
@@ -50,7 +43,7 @@ impl VertexBufferObj {
     pub fn copy_to_buffer(&self, vertices: &Rc<dyn Model>, draw_mode: DrawMode) {
         self.bind();
         unsafe {
-            self._copy_to_buffer(vertices.get_vertices(), (vertices.vertices_len() as isize * vertices.vertices_size()), draw_mode);
+            self._copy_to_buffer(vertices.get_vertices(), vertices.vertices_size(), draw_mode);
         }
     }
 
@@ -103,47 +96,6 @@ impl VertexArrayObj {
         self.attributes.insert(index, prop);
     }
 }
-
-#[derive(Debug, Clone, Copy)]
-pub enum AttributeComponentSize {
-    One   = 1,
-    Two   = 2,
-    Three = 3,
-    Four  = 4
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum GLType {
-    Byte,
-    UnsignedByte,
-    Short,
-    UnsignedShort,
-    Int,
-    UnsignedInt,
-    HalfFloat,
-    Float,
-    Double,
-    Fixed,
-}
-
-impl Into<u32> for GLType {
-    fn into(self) -> u32 {
-        match self {
-            GLType::Byte                => gl::BYTE,
-            GLType::UnsignedByte        => gl::UNSIGNED_BYTE,
-            GLType::Short               => gl::SHORT,
-            GLType::UnsignedShort       => gl::UNSIGNED_SHORT,
-            GLType::Int                 => gl::INT,
-            GLType::UnsignedInt         => gl::UNSIGNED_INT,
-            GLType::HalfFloat           => gl::HALF_FLOAT,
-            GLType::Float               => gl::FLOAT,
-            GLType::Double              => gl::DOUBLE,
-            GLType::Fixed               => gl::FIXED,
-
-        }
-    }
-}
-
 pub struct AttributeProperties {
     attrib_size: AttributeComponentSize,
     attrib_type: GLType,
@@ -154,12 +106,26 @@ pub struct AttributeProperties {
 
 impl AttributeProperties {
     pub fn new(size: AttributeComponentSize, attrib_type: GLType, normalized: bool, stride: i32, offset: u32) -> AttributeProperties {
+
+        let compute_size = match attrib_type {
+            GLType::Byte => mem::size_of::<i8>(),
+            GLType::Double => mem::size_of::<f64>(),
+            GLType::Fixed => mem::size_of::<i32>(),
+            GLType::Float => mem::size_of::<f32>(),
+            GLType::HalfFloat => mem::size_of::<u16>(),
+            GLType::Int => mem::size_of::<i32>(),
+            GLType::Short => mem::size_of::<i16>(),
+            GLType::UnsignedByte => mem::size_of::<u8>(),
+            GLType::UnsignedInt => mem::size_of::<u32>(),
+            GLType::UnsignedShort => mem::size_of::<u16>(),
+        } as u32;
+
         AttributeProperties {
             attrib_size: size,
             attrib_type: attrib_type,
             normalized: normalized,
-            stride: stride,
-            offset: offset,
+            stride: stride * (compute_size as i32),
+            offset: offset * compute_size,
         }
     }
 }
@@ -196,7 +162,7 @@ impl ElementArrayObj {
     pub fn copy_to_buffer(&self, vertices: &Rc<dyn Model>, draw_mode: DrawMode) {
         self.bind();
         unsafe {
-            self._copy_to_buffer(vertices.get_indices(), (vertices.indices_len() as isize * mem::size_of::<u32>() as isize), draw_mode);
+            self._copy_to_buffer(vertices.get_indices(), vertices.indices_len() as isize * mem::size_of::<u32>() as isize, draw_mode);
         }
     }
 

@@ -1,6 +1,8 @@
 use super::gl;
 use super::gl_error::OpenGLError;
 use super::RustyAceError;
+use super::textures;
+use super::types;
 use std::rc::Rc;
 use std::ptr;
 use std::fmt;
@@ -10,7 +12,6 @@ use std::io;
 use std::io::prelude::*;
 use std::fs;
 use std::path::Path;
-use std::borrow::Borrow;
 use nalgebra;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
@@ -23,7 +24,7 @@ pub enum ShaderType {
 }
 
 impl fmt::Display for ShaderType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
@@ -154,7 +155,7 @@ pub struct CompiledShaderProgram {
 }
 
 impl CompiledShaderProgram {
-    pub fn compile_shader(gl_ctx: Rc<gl::Gl>, prog: ShaderProgram) -> Result<CompiledShaderProgram, (OpenGLError, ShaderProgram)> {
+    pub fn compile_shader(gl_ctx: Rc<gl::Gl>, prog: ShaderProgram<'_>) -> Result<CompiledShaderProgram, (OpenGLError, ShaderProgram<'_>)> {
         unsafe {
             gl_ctx.LinkProgram(prog.id);
             let mut result_code = 0;
@@ -204,6 +205,11 @@ impl CompiledShaderProgram {
             loc = self.gl_ctx.GetUniformLocation(self.id, c_str.as_ptr());
         }
         uniform.assign_to_current_program(self.gl_ctx.as_ref(), loc);
+    }
+
+    pub(crate) fn assign_texture_to_unit(&self, name: &str, tex: &textures::Texture, tex_unit: types::TextureUnit) {
+        tex.bind(tex_unit);
+        self.set_uniform(name, &tex_unit)
     }
 
     pub fn use_program(&self) {
