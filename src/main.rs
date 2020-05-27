@@ -112,10 +112,11 @@ fn main() -> Result<(), RustyAceError> {
         // Like _that's_ going to be easy.
         // Physics will need to take into account time-steps
         // See if nphysics will work or if we'll need to do our own crude physics modeling
-        render.render(GLMode::Triangles, |_| {
+        render.render(GLMode::Triangles, |shdr| {
             // This is a function that allows per-frame uniform setting. This will become important with transformations,
             // As this can be used to change the position of an object per-frame...
             // However, it could be wrapped in an optional member or perhaps another method to allow for rendering with shaders that do not have uniforms without passing in an empty closure
+            shdr.set_uniform("transform", &(nalgebra::Matrix4::<f32>::new_scaling(1.0) * nalgebra::Matrix4::<f32>::from_scaled_axis(&nalgebra::Vector3::<f32>::new(0.0, 0.5, 1.0) * glfw.get_time() as f32)));
         })?;
 
 
