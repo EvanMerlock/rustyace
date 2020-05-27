@@ -14,7 +14,8 @@ pub struct Texture {
 
 impl Texture {
     pub fn from_file<P: AsRef<Path>>(gl_ctx: Rc<gl::Gl>, path: P) -> Result<Texture, TextureError> {
-        let dyn_img = image::open(path)?;
+        let mut dyn_img = image::open(path)?;
+        dyn_img = dyn_img.flipv();
         let rgb_image = dyn_img.to_rgb();
         let mut tex_id: u32 = 0;
         unsafe {
