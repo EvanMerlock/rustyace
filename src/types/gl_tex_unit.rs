@@ -1,5 +1,5 @@
 use crate::gl;
-use super::super::shaders::UniformType;
+use crate::types::UniformType;
 
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone)]
 pub enum TextureUnit {
