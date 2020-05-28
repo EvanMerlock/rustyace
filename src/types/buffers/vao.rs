@@ -1,5 +1,4 @@
 use crate::gl;
-use crate::renderable::Model;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::mem;

@@ -7,13 +7,6 @@ pub enum CameraMovement {
     Left,
     Right
 }
-
-pub const YAW: f32 = -90.0;
-pub const PITCH: f32 = 0.0;
-pub const SPEED: f32 = 2.5;
-pub const SENSITIVITY: f32 = 0.1;
-pub const FOV: f32 = 45.0;
-
 pub struct Camera {
     // The camera's position in world-space
     worldspace_position: glm::Vec3,
@@ -71,7 +64,7 @@ impl Camera {
     }
 
     pub fn process_movement(&mut self, direction: CameraMovement, delta_t: f32) {
-        let velocity = SPEED * delta_t;
+        let velocity = super::SPEED * delta_t;
         self.worldspace_position = 
             match direction {
                 CameraMovement::Fwd => self.worldspace_position + (self.camera_direction * velocity),

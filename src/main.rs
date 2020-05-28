@@ -8,13 +8,13 @@ use std::io;
 use image;
 use thiserror::Error;
 use types::*;
+use components::*;
 use nalgebra_glm as glm;
 
-mod renderable;
 mod shaders;
 mod gl_error;
 mod types;
-mod camera;
+mod components;
 mod utils;
 
 mod gl {
