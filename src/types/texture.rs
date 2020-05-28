@@ -1,11 +1,10 @@
 use image;
 use std::rc::Rc;
-use super::gl;
-use super::gl_error;
+use crate::gl;
+use crate::gl_error;
 use std::path::Path;
 use thiserror::Error;
 use crate::types::*;
-use super::types;
 
 pub struct Texture {
     gl_ctx: Rc<gl::Gl>,
@@ -48,7 +47,7 @@ impl Texture {
         )
     }
 
-    pub fn bind(&self, tex_unit: types::TextureUnit) {
+    pub fn bind(&self, tex_unit: TextureUnit) {
         unsafe {
             self.gl_ctx.ActiveTexture(tex_unit as u32);
             self.gl_ctx.BindTexture(gl::TEXTURE_2D, self.id);

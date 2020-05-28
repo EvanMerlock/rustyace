@@ -1,8 +1,6 @@
 use super::gl;
 use super::gl_error::OpenGLError;
 use super::RustyAceError;
-use super::textures;
-use super::types::*;
 use std::rc::Rc;
 use std::ptr;
 use std::fmt;
@@ -12,6 +10,7 @@ use std::io;
 use std::io::prelude::*;
 use std::fs;
 use std::path::Path;
+use crate::types::*;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum ShaderType {
@@ -206,7 +205,7 @@ impl CompiledShaderProgram {
         uniform.assign_to_current_program(self.gl_ctx.as_ref(), loc);
     }
 
-    pub(crate) fn assign_texture_to_unit(&self, name: &str, tex: &textures::Texture, tex_unit: TextureUnit) {
+    pub(crate) fn assign_texture_to_unit(&self, name: &str, tex: &Texture, tex_unit: TextureUnit) {
         tex.bind(tex_unit);
         self.set_uniform(name, &tex_unit)
     }

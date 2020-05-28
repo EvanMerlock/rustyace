@@ -15,7 +15,6 @@ mod buffers;
 mod renderable;
 mod shaders;
 mod gl_error;
-mod textures;
 mod types;
 mod camera;
 mod utils;
@@ -52,8 +51,8 @@ fn main() -> Result<(), RustyAceError> {
     // TODO: develop an asset container
     // We shouldn't have to manually specify all of the assets the program uses in the main function
     // An asset container should be used to store it all
-    let tex1 = textures::Texture::from_file(gl_context.clone(), "./textures/texture1.jpg")?;
-    let tex2 = textures::Texture::from_file(gl_context.clone(), "./textures/texture2.png")?;
+    let tex1 = Texture::from_file(gl_context.clone(), "./textures/texture1.jpg")?;
+    let tex2 = Texture::from_file(gl_context.clone(), "./textures/texture2.png")?;
     let assembled_shader = Rc::new(shaders::CompiledShaderProgram::generate_program(gl_context.clone(), "./shaders/basic_vert_shader.vs", "./shaders/basic_frag_shader.fs", None)?);
     assembled_shader.use_program();
     assembled_shader.assign_texture_to_unit("texture1", &tex1, types::TextureUnit::Slot0);
@@ -257,11 +256,11 @@ impl From<io::Error> for RustyAceError {
     }
 }
 
-impl From<textures::TextureError> for RustyAceError {
-    fn from(err: textures::TextureError) -> Self {
+impl From<TextureError> for RustyAceError {
+    fn from(err: TextureError) -> Self {
         match err {
-            textures::TextureError::ImageError(err_i) => RustyAceError::ImageError(err_i),
-            textures::TextureError::OpenGLError(err_o) => RustyAceError::OpenGLError(err_o),
+            TextureError::ImageError(err_i) => RustyAceError::ImageError(err_i),
+            TextureError::OpenGLError(err_o) => RustyAceError::OpenGLError(err_o),
         }
     }
 }
