@@ -1,6 +1,5 @@
-use super::gl;
-use super::gl_error::OpenGLError;
-use super::RustyAceError;
+use crate::gl;
+use crate::RustyAceError;
 use std::rc::Rc;
 use std::ptr;
 use std::fmt;

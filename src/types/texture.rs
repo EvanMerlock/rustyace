@@ -1,7 +1,6 @@
 use image;
 use std::rc::Rc;
 use crate::gl;
-use crate::gl_error;
 use std::path::Path;
 use thiserror::Error;
 use crate::types::*;
@@ -58,13 +57,13 @@ impl Texture {
 #[derive(Error, Debug)]
 pub enum TextureError {
     #[error("Loading a texture into OpenGL failed: {0}")]
-    OpenGLError(gl_error::OpenGLError),
+    OpenGLError(OpenGLError),
     #[error("Loading the texture image failed: {0}")]
     ImageError(image::ImageError),
 }
 
-impl From<gl_error::OpenGLError> for TextureError {
-    fn from(err: gl_error::OpenGLError) -> Self {
+impl From<OpenGLError> for TextureError {
+    fn from(err: OpenGLError) -> Self {
         TextureError::OpenGLError(err)
     }
 }

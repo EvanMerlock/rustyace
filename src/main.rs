@@ -11,8 +11,6 @@ use types::*;
 use components::*;
 use nalgebra_glm as glm;
 
-mod shaders;
-mod gl_error;
 mod types;
 mod components;
 mod utils;
@@ -51,7 +49,7 @@ fn main() -> Result<(), RustyAceError> {
     // An asset container should be used to store it all
     let tex1 = Texture::from_file(gl_context.clone(), "./textures/texture1.jpg")?;
     let tex2 = Texture::from_file(gl_context.clone(), "./textures/texture2.png")?;
-    let assembled_shader = Rc::new(shaders::CompiledShaderProgram::generate_program(gl_context.clone(), "./shaders/basic_vert_shader.vs", "./shaders/basic_frag_shader.fs", None)?);
+    let assembled_shader = Rc::new(CompiledShaderProgram::generate_program(gl_context.clone(), "./shaders/basic_vert_shader.vs", "./shaders/basic_frag_shader.fs", None)?);
     assembled_shader.use_program();
     assembled_shader.assign_texture_to_unit("texture1", &tex1, types::TextureUnit::Slot0);
     assembled_shader.assign_texture_to_unit("texture2", &tex2, types::TextureUnit::Slot1);
@@ -235,15 +233,15 @@ fn process_input(ctx: &mut EntryContext<'_>) {
 #[derive(Error, Debug)]
 pub enum RustyAceError {
     #[error("OpenGL Failed: {0}")]
-    OpenGLError(gl_error::OpenGLError),
+    OpenGLError(OpenGLError),
     #[error("Asset Load Failed: {0}")]
     IOError(io::Error),
     #[error("Image Load Failed: {0}")]
     ImageError(image::ImageError),
 }
 
-impl From<gl_error::OpenGLError> for RustyAceError {
-    fn from(err: gl_error::OpenGLError) -> Self {
+impl From<OpenGLError> for RustyAceError {
+    fn from(err: OpenGLError) -> Self {
         RustyAceError::OpenGLError(err)
     }
 }

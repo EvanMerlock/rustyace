@@ -1,9 +1,8 @@
-use crate::{gl, gl_error};
+use crate::{gl};
 use crate::types::*;
 use std::rc::Rc;
 use std::mem;
 use std::ptr;
-use crate::shaders::CompiledShaderProgram;
 // TODO: Figure out if we need to split models into meshes (we probably do)
 // And the best way to communicate data to the GPU.
 // With nalgebra, we might be able to augment matricies by row (since matricies are column-major) in order to add more information
@@ -77,7 +76,7 @@ pub struct Renderable {
 
 impl Renderable {
 
-    pub fn new(gl_ctx: Rc<gl::Gl>, model: Rc<dyn Model>, attrib_spec: impl Fn(&mut VertexArrayObj) -> ()) -> Result<Renderable, gl_error::OpenGLError> {
+    pub fn new(gl_ctx: Rc<gl::Gl>, model: Rc<dyn Model>, attrib_spec: impl Fn(&mut VertexArrayObj) -> ()) -> Result<Renderable, OpenGLError> {
         let mut vertex_array = VertexArrayObj::new(gl_ctx.clone());
         let vertex_buffer = VertexBufferObj::new(gl_ctx.clone());
         let element_buffer = ElementArrayObj::new(gl_ctx.clone());
@@ -97,7 +96,7 @@ impl Renderable {
         })    
     }
 
-    pub fn render(&self, array_dmode: GLMode, uniform_set: impl Fn(&CompiledShaderProgram) -> ()) -> Result<(), gl_error::OpenGLError> {
+    pub fn render(&self, array_dmode: GLMode, uniform_set: impl Fn(&CompiledShaderProgram) -> ()) -> Result<(), OpenGLError> {
         let shader = self.model.get_shader();
         shader.use_program();
 
