@@ -8,6 +8,7 @@ use std::io;
 use image;
 use thiserror::Error;
 use types::*;
+use nalgebra_glm as glm;
 
 
 mod buffers;
@@ -16,6 +17,8 @@ mod shaders;
 mod gl_error;
 mod textures;
 mod types;
+mod camera;
+mod utils;
 
 mod gl {
     use std::fmt;
@@ -36,11 +39,14 @@ fn main() -> Result<(), RustyAceError> {
     let (mut window, events) = glfw.create_window(300, 300, "RustyAce", glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
 
+    window.set_cursor_mode(glfw::CursorMode::Disabled);
+
     // Migrated GL context to a ref-counted pointer inside all buffer/rendering structs.
     // This isn't as efficient as passing around references, and should eventually be migrated to lifetimes.
     let gl_context = Rc::new(gl::Gl::load_with(|s| window.get_proc_address(s) as *const _));
     unsafe {
         gl_context.Viewport(0,0,300,300);
+        gl_context.Enable(gl::DEPTH_TEST);
     }
 
     // TODO: develop an asset container
@@ -60,7 +66,17 @@ fn main() -> Result<(), RustyAceError> {
     // Note that any voxel format would still need to specify extended surfaces; rendering a ton of individual cubes might be rough on the GPU
     // Although instanced rendering might be able to help reduce the issue
     // We could also implement both a voxel-model format and a normal model format, to make it easier to develop voxel models while also allowing model flexibility.
-    let tri_model = Rc::new(renderable::ResidentModel::new(&renderable::TRI_VERTICES, &renderable::TRI_INDICES, assembled_shader));
+    let tri_model = Rc::new(renderable::ResidentModel::new(&renderable::CUBE_VERTICES, &renderable::CUBE_INDICES, assembled_shader));
+
+    let mut camera = camera::Camera::new(
+        glm::vec3(0.0, 0.0, 3.0), 
+        glm::vec3(0.0, 1.0, 0.0), 
+        glm::vec3(0.0, 0.0, -1.0),
+        camera::PITCH, 
+        camera::YAW, 
+        camera::SENSITIVITY, 
+        45.0
+    );
 
     let render = renderable::Renderable::new(gl_context.clone(), tri_model, |vao| {
         //TODO: is this the best way to have configurable attribute indices?
@@ -98,15 +114,44 @@ fn main() -> Result<(), RustyAceError> {
 
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
+    window.set_cursor_pos_polling(true);
     window.make_current();
 
+    let mut last_frame: f32 = 0.0;
+    let mut delta_t: f32;
+
+    let mut first_mouse = true;
+    let mut last_mouse_x = 0.0;
+    let mut last_mouse_y = 0.0;
+
     while !window.should_close() {
+
+        let current_frame = glfw.get_time() as f32;
+        delta_t = current_frame - last_frame;
+        last_frame = current_frame;        
 
         unsafe {
             // TODO: move this into it's own function
             gl_context.ClearColor(0.0f32, 0.2f32, 0.0f32, 1.0f32);
-            gl_context.Clear(gl::COLOR_BUFFER_BIT);
+            gl_context.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
+
+        let mut entry_context = EntryContext {
+            dt: delta_t,
+            first_mouse: &mut first_mouse,
+            last_mouse_x: &mut last_mouse_x,
+            last_mouse_y: &mut last_mouse_y,
+            gl_context: &gl_context,
+            window: &mut window,
+            camera: &mut camera,
+        };
+
+        glfw.poll_events();
+        for (_, event) in glfw::flush_messages(&events) {
+            handle_window_event(&mut entry_context, event);
+        }
+
+        process_input(&mut entry_context);
 
         // TODO: Convert this to a real ECS system and implement physics.
         // Like _that's_ going to be easy.
@@ -116,14 +161,13 @@ fn main() -> Result<(), RustyAceError> {
             // This is a function that allows per-frame uniform setting. This will become important with transformations,
             // As this can be used to change the position of an object per-frame...
             // However, it could be wrapped in an optional member or perhaps another method to allow for rendering with shaders that do not have uniforms without passing in an empty closure
-            shdr.set_uniform("transform", &(nalgebra::Matrix4::<f32>::new_scaling(1.0) * nalgebra::Matrix4::<f32>::from_scaled_axis(&nalgebra::Vector3::<f32>::new(0.0, 0.5, 1.0) * glfw.get_time() as f32)));
+            let model = glm::rotate(&glm::Mat4::identity(), (glfw.get_time() as f32) * utils::radians(50.0), &glm::vec3(0.5, 1.0, 0.0));
+            shdr.set_uniform("model", &model);
+            shdr.set_uniform("view", &camera.generate_view_matrix());
+            let (width, height) = window.get_size();
+            shdr.set_uniform("projection", &camera.generate_projection_matrix(width as f32, height as f32));
         })?;
 
-
-        glfw.poll_events();
-        for (_, event) in glfw::flush_messages(&events) {
-            handle_window_event(&gl_context, &mut window, event);
-        }
         window.swap_buffers();
     }
 
@@ -131,19 +175,63 @@ fn main() -> Result<(), RustyAceError> {
     Ok(())
 }
 
-fn handle_window_event(gl_context: &gl::Gl, window: &mut glfw::Window, event: glfw::WindowEvent) {
+struct EntryContext<'a> {
+    dt: f32,
+    first_mouse: &'a mut bool,
+    last_mouse_x: &'a mut f32,
+    last_mouse_y: &'a mut f32,
+    gl_context: &'a gl::Gl,
+    window: &'a mut glfw::Window,
+    camera: &'a mut camera::Camera,
+}
+
+fn handle_window_event(ctx: &mut EntryContext<'_>, event: glfw::WindowEvent) {
     // TODO: Enable mouse events and move camera
     // Should proc an event to tell the camera to move
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-            window.set_should_close(true)
-        }
+            ctx.window.set_should_close(true)
+        },
         glfw::WindowEvent::FramebufferSize(width, height) => {
             unsafe {
-                gl_context.Viewport(0, 0, width, height);
+                ctx.gl_context.Viewport(0, 0, width, height);
             }
-        }
+        },
+        glfw::WindowEvent::CursorPos(x, y) => {
+
+            let x = x as f32;
+            let y = y as f32;
+
+            if *ctx.first_mouse {
+                *ctx.first_mouse = false;
+                *ctx.last_mouse_x = x;
+                *ctx.last_mouse_y = y;
+            }
+
+            let x_offset = x - *ctx.last_mouse_x;
+            let y_offset = *ctx.last_mouse_y - y;
+
+            *ctx.last_mouse_x = x;
+            *ctx.last_mouse_y = y;
+
+            ctx.camera.process_mouse_input(x_offset, y_offset, true);
+        },
         _ => {}
+    }
+}
+
+fn process_input(ctx: &mut EntryContext<'_>) {
+    if ctx.window.get_key(Key::W) == Action::Press {
+        ctx.camera.process_movement(camera::CameraMovement::Fwd, ctx.dt);
+    }
+    if ctx.window.get_key(Key::A) == Action::Press {
+        ctx.camera.process_movement(camera::CameraMovement::Left, ctx.dt);
+    }
+    if ctx.window.get_key(Key::S) == Action::Press {
+        ctx.camera.process_movement(camera::CameraMovement::Bwd, ctx.dt);
+    }
+    if ctx.window.get_key(Key::D) == Action::Press {
+        ctx.camera.process_movement(camera::CameraMovement::Right, ctx.dt);
     }
 }
 

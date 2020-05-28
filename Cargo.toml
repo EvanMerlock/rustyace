@@ -9,11 +9,13 @@ build = "build.rs"
 
 [dependencies]
 glfw = "0.37.0"
+nalgebra-glm = "0.7.0"
 nalgebra = { version = "0.21.0", features = ["serde-serialize"] }
 serde = { version = "1.0.110", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 image = "0.23.4"
+obj-rs = "0.6"
 
 [build-dependencies]
 gl_generator = "0.14.0"

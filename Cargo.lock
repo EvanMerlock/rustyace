@@ -358,6 +358,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nalgebra-glm"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0689d473f0cbf5d763219dc9faf5d3c3136d20583f533317cc9463f85400ca1"
+dependencies = [
+ "approx",
+ "nalgebra",
+ "num-traits",
+ "simba",
+]
+
+[[package]]
 name = "num-complex"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -418,6 +430,17 @@ checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
 dependencies = [
  "hermit-abi",
  "libc",
+]
+
+[[package]]
+name = "obj-rs"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc24073e9408e53811209c5a0f0e2349e2bad0314b1038ddf0af2ce6664df7de"
+dependencies = [
+ "num-traits",
+ "serde",
+ "vec_map",
 ]
 
 [[package]]
@@ -590,6 +613,8 @@ dependencies = [
  "glfw",
  "image",
  "nalgebra",
+ "nalgebra-glm",
+ "obj-rs",
  "serde",
  "serde_json",
  "thiserror",
@@ -724,6 +749,12 @@ name = "unicode-xid"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
+
+[[package]]
+name = "vec_map"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "wasi"
