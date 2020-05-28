@@ -11,6 +11,7 @@ mod gl_mode;
 mod uniform_type;
 mod framebuffer;
 mod texture;
+mod buffers;
 
 // Re-exports for convienence
 pub use gl_tex_unit::*;
@@ -21,3 +22,4 @@ pub use gl_mode::*;
 pub(crate) use uniform_type::*;
 pub use self::framebuffer::*;
 pub use self::texture::*;
+pub use self::buffers::*;

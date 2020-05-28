@@ -1,6 +1,5 @@
 use super::gl_error;
 use super::gl;
-use super::buffers;
 use crate::types::*;
 use std::rc::Rc;
 use std::mem;
@@ -140,17 +139,17 @@ impl Model for ResidentModel {
 pub struct Renderable {
     gl_ctx: Rc<gl::Gl>,
     model: Rc<dyn Model>,
-    vao: buffers::VertexArrayObj,
-    vbo: buffers::VertexBufferObj,
-    ebo: buffers::ElementArrayObj,
+    vao: VertexArrayObj,
+    vbo: VertexBufferObj,
+    ebo: ElementArrayObj,
 }
 
 impl Renderable {
 
-    pub fn new(gl_ctx: Rc<gl::Gl>, model: Rc<dyn Model>, attrib_spec: impl Fn(&mut buffers::VertexArrayObj) -> ()) -> Result<Renderable, gl_error::OpenGLError> {
-        let mut vertex_array = buffers::VertexArrayObj::new(gl_ctx.clone());
-        let vertex_buffer = buffers::VertexBufferObj::new(gl_ctx.clone());
-        let element_buffer = buffers::ElementArrayObj::new(gl_ctx.clone());
+    pub fn new(gl_ctx: Rc<gl::Gl>, model: Rc<dyn Model>, attrib_spec: impl Fn(&mut VertexArrayObj) -> ()) -> Result<Renderable, gl_error::OpenGLError> {
+        let mut vertex_array = VertexArrayObj::new(gl_ctx.clone());
+        let vertex_buffer = VertexBufferObj::new(gl_ctx.clone());
+        let element_buffer = ElementArrayObj::new(gl_ctx.clone());
 
         vertex_array.bind();
         vertex_buffer.bind();

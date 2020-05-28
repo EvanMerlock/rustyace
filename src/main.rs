@@ -10,8 +10,6 @@ use thiserror::Error;
 use types::*;
 use nalgebra_glm as glm;
 
-
-mod buffers;
 mod renderable;
 mod shaders;
 mod gl_error;
@@ -86,14 +84,14 @@ fn main() -> Result<(), RustyAceError> {
         // Should a renderable have a 1-to-1 correspondence with a VAO?
         vao.configure_index(
             0, 
-            buffers::AttributeProperties::new(
+            AttributeProperties::new(
                 AttributeComponentSize::Three, 
                 GLType::Float, 
                 false, 
                 8, 
                 0));
 
-        vao.configure_index(1, buffers::AttributeProperties::new(
+        vao.configure_index(1, AttributeProperties::new(
             AttributeComponentSize::Three, 
             GLType::Float, 
             false, 
@@ -101,7 +99,7 @@ fn main() -> Result<(), RustyAceError> {
             3));
 
         vao.configure_index(2,
-            buffers::AttributeProperties::new(
+            AttributeProperties::new(
                 AttributeComponentSize::Two,
                 GLType::Float,
                 false,
