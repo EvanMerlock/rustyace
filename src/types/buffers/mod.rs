@@ -1,10 +1,12 @@
 mod ebo;
 mod vao;
 mod vbo;
+mod framebuffer;
 
 pub use self::ebo::*;
 pub use self::vao::*;
 pub use self::vbo::*;
+pub use self::framebuffer::*;
 
 // TODO:
 // Buffer objects/shaders are GLOBAL STATE.
