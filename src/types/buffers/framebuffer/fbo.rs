@@ -2,7 +2,7 @@ use std::rc::Rc;
 use crate::types::*;
 use crate::gl;
 
-struct FrameBuffer {
+pub struct FrameBuffer {
     gl_ctx: Rc<gl::Gl>, 
     id: u32,
     textures: Vec<Texture>,
@@ -42,8 +42,9 @@ impl FrameBuffer {
         }
     }
 
-    fn attach_texture(size_x: i32, size_y: i32) {
-
+    fn attach_texture(&mut self, width: i32, height: i32, int_format: InternalStorage) {
+        let tex = Texture::from_framebuffer(self.gl_ctx.clone(), width, height, int_format);
+        self.textures.push(tex);
     }
 }
 
@@ -51,13 +52,4 @@ enum FrameBufferRDBehavior {
     ReadOnly    = gl::READ_FRAMEBUFFER as isize,
     DrawOnly    = gl::DRAW_FRAMEBUFFER as isize,
     RD          = gl::FRAMEBUFFER as isize,
-}
-
-struct RenderBuffer {
-    gl_ctx: Rc<gl::Gl>, 
-    id: u32,
-}
-
-impl RenderBuffer {
-
 }

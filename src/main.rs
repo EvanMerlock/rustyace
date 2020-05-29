@@ -47,8 +47,8 @@ fn main() -> Result<(), RustyAceError> {
     // TODO: develop an asset container
     // We shouldn't have to manually specify all of the assets the program uses in the main function
     // An asset container should be used to store it all
-    let tex1 = Texture::from_file(gl_context.clone(), "./textures/texture1.jpg")?;
-    let tex2 = Texture::from_file(gl_context.clone(), "./textures/texture2.png")?;
+    let tex1 = Texture::from_file(gl_context.clone(), "./textures/texture1.jpg", InternalStorage::RGB)?;
+    let tex2 = Texture::from_file(gl_context.clone(), "./textures/texture2.png", InternalStorage::RGB)?;
     let assembled_shader = Rc::new(CompiledShaderProgram::generate_program(gl_context.clone(), "./shaders/basic_vert_shader.vs", "./shaders/basic_frag_shader.fs", None)?);
     assembled_shader.use_program();
     assembled_shader.assign_texture_to_unit("texture1", &tex1, types::TextureUnit::Slot0);
