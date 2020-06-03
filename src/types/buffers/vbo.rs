@@ -1,5 +1,4 @@
 use crate::gl;
-use crate::renderable::Model;
 use std::rc::Rc;
 use crate::types::*;
 
@@ -32,14 +31,10 @@ impl VertexBufferObj {
         }
     }
 
-    pub fn copy_to_buffer(&self, vertices: &Rc<dyn Model>, draw_mode: DrawMode) {
+    pub fn copy_to_buffer<T: TypedBuffer>(&self, verts: T, draw_mode: DrawMode) {
         self.bind();
         unsafe {
-            self._copy_to_buffer(vertices.get_vertices(), vertices.vertices_size(), draw_mode);
+            self.gl_ctx.BufferData(gl::ARRAY_BUFFER, verts.size() as isize, verts.ref_ptr(), draw_mode as u32);
         }
-    }
-
-    unsafe fn _copy_to_buffer(&self, vertices: &[f32], size: isize, draw_mode: DrawMode) {
-        self.gl_ctx.BufferData(gl::ARRAY_BUFFER, size, vertices.as_ptr() as *const _, draw_mode as u32);
     }
 }

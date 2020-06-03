@@ -433,17 +433,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "obj-rs"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc24073e9408e53811209c5a0f0e2349e2bad0314b1038ddf0af2ce6664df7de"
-dependencies = [
- "num-traits",
- "serde",
- "vec_map",
-]
-
-[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -614,10 +603,10 @@ dependencies = [
  "image",
  "nalgebra",
  "nalgebra-glm",
- "obj-rs",
  "serde",
  "serde_json",
  "thiserror",
+ "tobj",
 ]
 
 [[package]]
@@ -739,6 +728,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tobj"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c09266614653bb7668cff99f1631ca162844a1cd97afc601dc22fc9ba218bfd"
+
+[[package]]
 name = "typenum"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -749,12 +744,6 @@ name = "unicode-xid"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
-
-[[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "wasi"

@@ -1,5 +1,4 @@
 use crate::gl;
-use crate::renderable::Model;
 use std::rc::Rc;
 use std::mem;
 use crate::types::*;
@@ -33,14 +32,10 @@ impl ElementArrayObj {
         }
     }
 
-    pub fn copy_to_buffer(&self, vertices: &Rc<dyn Model>, draw_mode: DrawMode) {
+    pub fn copy_to_buffer<T: TypedBuffer>(&self, indicies: T, draw_mode: DrawMode) {
         self.bind();
         unsafe {
-            self._copy_to_buffer(vertices.get_indices(), vertices.indices_len() as isize * mem::size_of::<u32>() as isize, draw_mode);
+            self.gl_ctx.BufferData(gl::ELEMENT_ARRAY_BUFFER, indicies.size() as isize, indicies.ref_ptr(), draw_mode as u32);
         }
-    }
-
-    unsafe fn _copy_to_buffer(&self, vertices: &[u32], size: isize, draw_mode: DrawMode) {
-        self.gl_ctx.BufferData(gl::ELEMENT_ARRAY_BUFFER, size, vertices.as_ptr() as *const _, draw_mode as u32);
     }
 }

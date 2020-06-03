@@ -87,9 +87,12 @@ impl Shader {
             let mut result_code: i32 = 0;
             self.gl_ctx.GetShaderiv(self.id, gl::COMPILE_STATUS, (&mut result_code) as *mut i32);
             if result_code != (gl::TRUE as i32) {
-                let mut character_output: [u8; 512] = [0; 512];
-                self.gl_ctx.GetShaderInfoLog(self.id, 512, ptr::null_mut(), character_output.as_mut_ptr() as *mut i8);
-                return Err(OpenGLError::CompileError(String::from_utf8_unchecked(character_output.to_vec())));
+                let character_output = Vec::with_capacity(512);
+                let c_str = CString::new(character_output).expect("Failed to initialize blank CString");
+                let c_ptr = c_str.into_raw();
+                self.gl_ctx.GetShaderInfoLog(self.id, 512, ptr::null_mut(), c_ptr);
+                let c_str = CString::from_raw(c_ptr);
+                return Err(OpenGLError::CompileError(c_str.to_str().expect("Failed to convert from CString").to_owned()));
             }
         }
         Ok(())
@@ -149,6 +152,9 @@ impl<'a> ShaderProgram<'a> {
 pub struct CompiledShaderProgram {
     gl_ctx: Rc<gl::Gl>,
     id: u32,
+    // there needs to be something here to restore texture state, since glBindTexture overwrites what's being bound in which slot.
+    // most likely a hashmap, but how do we store texture information?
+    // Rc's would likely work, but that's a lot more rc pointers to deal with.
 }
 
 impl CompiledShaderProgram {
@@ -156,11 +162,14 @@ impl CompiledShaderProgram {
         unsafe {
             gl_ctx.LinkProgram(prog.id);
             let mut result_code = 0;
-            gl_ctx.GetShaderiv(prog.id, gl::LINK_STATUS, (&mut result_code) as *mut _);
-            if result_code != 0 {
-                let mut character_output: [u8; 512] = [0; 512];
-                gl_ctx.GetShaderInfoLog(prog.id, 512, ptr::null_mut(), character_output.as_mut_ptr() as *mut i8);
-                return Err((OpenGLError::LinkerError(String::from_utf8_unchecked(character_output.to_vec())), prog));
+            gl_ctx.GetProgramiv(prog.id, gl::LINK_STATUS, (&mut result_code) as *mut _);
+            if result_code != (gl::TRUE as i32) {
+                let character_output = Vec::with_capacity(512);
+                let c_str = CString::new(character_output).expect("Failed to initialize blank CString");
+                let c_ptr = c_str.into_raw();
+                gl_ctx.GetProgramInfoLog(prog.id, 512, ptr::null_mut(), c_ptr);
+                let c_str = CString::from_raw(c_ptr);
+                return Err((OpenGLError::LinkerError(c_str.to_str().expect("Failed to convert from CString").to_owned()), prog));
             }
             for (_,v) in prog.loaded_phases.iter() {
                 gl_ctx.DetachShader(prog.id, v.id)
@@ -204,8 +213,7 @@ impl CompiledShaderProgram {
         uniform.assign_to_current_program(self.gl_ctx.as_ref(), loc);
     }
 
-    pub(crate) fn assign_texture_to_unit(&self, name: &str, tex: &Texture, tex_unit: TextureUnit) {
-        tex.bind(tex_unit);
+    pub(crate) fn assign_texture_to_unit(&self, name: &str, tex_unit: TextureUnit) {
         self.set_uniform(name, &tex_unit)
     }
 

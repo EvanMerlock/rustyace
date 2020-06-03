@@ -14,6 +14,8 @@ use nalgebra_glm as glm;
 mod types;
 mod components;
 mod utils;
+mod asset_loading;
+mod debug;
 
 mod gl {
     use std::fmt;
@@ -29,6 +31,7 @@ mod gl {
 
 fn main() -> Result<(), RustyAceError> {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+    debug::init_debug_context(&mut glfw);
 
     // TODO: Read from configuration file to set some window defaults!
     let (mut window, events) = glfw.create_window(300, 300, "RustyAce", glfw::WindowMode::Windowed)
@@ -38,21 +41,55 @@ fn main() -> Result<(), RustyAceError> {
 
     // Migrated GL context to a ref-counted pointer inside all buffer/rendering structs.
     // This isn't as efficient as passing around references, and should eventually be migrated to lifetimes.
-    let gl_context = Rc::new(gl::Gl::load_with(|s| window.get_proc_address(s) as *const _));
+    let gl_context = gl::Gl::load_with(|s| window.get_proc_address(s) as *const _);
     unsafe {
         gl_context.Viewport(0,0,300,300);
-        gl_context.Enable(gl::DEPTH_TEST);
     }
+
+    let mut assets = asset_loading::AssetContainer::new("./assets", gl_context);
+    debug::init_debug_functionality(assets.gl_ctx());
+
+    // TODO: Develop a framebuffer container?
+    // Not sure how we should be properly managing framebuffers tbh
+    // esp. considering screen size can change... the framebuffer might need to realloc every time the screen size changes which is yikes
+    let win_size = window.get_size();
+    let mut single_pass_fbo = FrameBuffer::new(assets.gl_ctx());
+    single_pass_fbo.bind(FrameBufferRDBehavior::RD);
+    single_pass_fbo.attach_texture(win_size.0, win_size.1, 
+        TexConfig::new(TextureType::Texture2D, InternalStorage::RGB, PixelDataFormat::RGB, PixelDataType::UnsignedByte), 
+        FrameBufferAttachment::Color(0));
+    single_pass_fbo.attach_renderbuffer(win_size.0, win_size.1, InternalStorage::Depth24Stencil8, FrameBufferAttachment::DepthStencil);
+    single_pass_fbo.unbind();
 
     // TODO: develop an asset container
     // We shouldn't have to manually specify all of the assets the program uses in the main function
     // An asset container should be used to store it all
-    let tex1 = Texture::from_file(gl_context.clone(), "./textures/texture1.jpg", InternalStorage::RGB)?;
-    let tex2 = Texture::from_file(gl_context.clone(), "./textures/texture2.png", InternalStorage::RGB)?;
-    let assembled_shader = Rc::new(CompiledShaderProgram::generate_program(gl_context.clone(), "./shaders/basic_vert_shader.vs", "./shaders/basic_frag_shader.fs", None)?);
+    let tex_config = TexConfig::new(
+        TextureType::Texture2D, InternalStorage::RGB,
+        PixelDataFormat::RGB, PixelDataType::UnsignedByte
+    );
+    assets.add_texture("texture1", "texture1.jpg", tex_config.clone())?;
+    assets.add_texture("texture2", "texture2.png", tex_config.clone())?;
+
+    let tex_config_cm = TexConfig::new(
+        TextureType::TextureCubeMap, InternalStorage::RGB,
+        PixelDataFormat::RGB, PixelDataType::UnsignedByte
+    );
+    assets.add_cubemap("skybox", "skybox", tex_config_cm)?;
+    let assembled_shader = assets.add_program("shader_basic", "basic/basic_vert_shader.vert", "basic/basic_frag_shader.frag", None)?;
+    
     assembled_shader.use_program();
-    assembled_shader.assign_texture_to_unit("texture1", &tex1, types::TextureUnit::Slot0);
-    assembled_shader.assign_texture_to_unit("texture2", &tex2, types::TextureUnit::Slot1);
+    assembled_shader.assign_texture_to_unit("texture1", types::TextureUnit::Slot0);
+    assembled_shader.assign_texture_to_unit("texture2", types::TextureUnit::Slot1);
+
+
+    let screenspace_shader = assets.add_program("screenspace_shader", "frame/framebuffer.vert", "frame/framebuffer.frag", None)?;
+    screenspace_shader.use_program();
+    screenspace_shader.assign_texture_to_unit("screenTexture", types::TextureUnit::Slot0);
+
+    let skybox_shader = assets.add_program("skybox_shader", "skybox/skybox.vert", "skybox/skybox.frag", None)?;
+    skybox_shader.use_program();
+    skybox_shader.assign_texture_to_unit("skybox", TextureUnit::Slot0);
 
     // TODO: Develop a model file format or use a pre-existing one (.obj comes to mind)
     // The only reason we would develop our own model file format is that this is designed to be a voxel engine;
@@ -61,25 +98,18 @@ fn main() -> Result<(), RustyAceError> {
     // Note that any voxel format would still need to specify extended surfaces; rendering a ton of individual cubes might be rough on the GPU
     // Although instanced rendering might be able to help reduce the issue
     // We could also implement both a voxel-model format and a normal model format, to make it easier to develop voxel models while also allowing model flexibility.
-    let tri_model = Rc::new(renderable::ResidentModel::new(&renderable::CUBE_VERTICES, &renderable::CUBE_INDICES, assembled_shader));
-
-    let mut camera = camera::Camera::new(
-        glm::vec3(0.0, 0.0, 3.0), 
-        glm::vec3(0.0, 1.0, 0.0), 
-        glm::vec3(0.0, 0.0, -1.0),
-        camera::PITCH, 
-        camera::YAW, 
-        camera::SENSITIVITY, 
-        45.0
-    );
-
-    let render = renderable::Renderable::new(gl_context.clone(), tri_model, |vao| {
+    let cube_model = Rc::new(ResidentModel::new(assets.gl_ctx(), &renderable::CUBE_VERTICES, &renderable::CUBE_INDICES, assembled_shader, |vao| {
         //TODO: is this the best way to have configurable attribute indices?
         // Is there a more elegant solution?
         // Or this this the most elegant solution?
         // We seem to be using callbacks at least twice, including this one.
         // This might be the best solution, although some form of interchange between shaders and VAO's would maybe be good (since shaders define what they accept)
-        // Should a renderable have a 1-to-1 correspondence with a VAO?
+
+        // Now that VAO's are associated with models, they can be configured on a per-model basis.
+        // _Most_ models should load in with the same set of vertices (position, color?, texture, normal)
+        // HOWEVER, there are special cases! Thus, ResidentModel should probably keep the VAO configuration, and file loaded models should automagically configure the VAO.
+        // Esp. considering that OBJ files have the same vertex formatting! 
+
         vao.configure_index(
             0, 
             AttributeProperties::new(
@@ -105,7 +135,48 @@ fn main() -> Result<(), RustyAceError> {
                 6
             )
         );
-    })?;
+    }));
+
+    let screenspace_quad = Rc::new(ResidentModel::new(assets.gl_ctx(), &renderable::QUAD_VERTICIES, &renderable::QUAD_INDICIES, screenspace_shader, |vao| {
+        vao.configure_index(0, AttributeProperties::new(
+            AttributeComponentSize::Two,
+            GLType::Float, 
+            false, 
+            4, 
+            0));
+
+        vao.configure_index(1, AttributeProperties::new(
+            AttributeComponentSize::Two, 
+            GLType::Float, 
+            false, 
+            4, 
+            2));
+    }));
+
+    let skybox_model = Rc::new(ResidentModel::new(assets.gl_ctx(), &renderable::CUBE_VERTICES, &renderable::CUBE_INDICES, skybox_shader, |vao| {
+        vao.configure_index(
+            0, 
+            AttributeProperties::new(
+                AttributeComponentSize::Three, 
+                GLType::Float, 
+                false, 
+                8, 
+                0));
+    }));
+
+    let mut camera = camera::Camera::new(
+        glm::vec3(0.0, 0.0, 3.0), 
+        glm::vec3(0.0, 1.0, 0.0), 
+        glm::vec3(0.0, 0.0, -1.0),
+        camera::PITCH, 
+        camera::YAW, 
+        camera::SENSITIVITY, 
+        45.0
+    );
+
+    let cube_render = renderable::Renderable::new(assets.gl_ctx(), cube_model)?;
+    let quad_render = renderable::Renderable::new(assets.gl_ctx(), screenspace_quad.clone())?;
+    let skybox_render = renderable::Renderable::new(assets.gl_ctx(), skybox_model)?;
 
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
@@ -125,18 +196,12 @@ fn main() -> Result<(), RustyAceError> {
         delta_t = current_frame - last_frame;
         last_frame = current_frame;        
 
-        unsafe {
-            // TODO: move this into it's own function
-            gl_context.ClearColor(0.0f32, 0.2f32, 0.0f32, 1.0f32);
-            gl_context.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        }
-
         let mut entry_context = EntryContext {
             dt: delta_t,
             first_mouse: &mut first_mouse,
             last_mouse_x: &mut last_mouse_x,
             last_mouse_y: &mut last_mouse_y,
-            gl_context: &gl_context,
+            gl_context: assets.gl_ctx(),
             window: &mut window,
             camera: &mut camera,
         };
@@ -148,22 +213,79 @@ fn main() -> Result<(), RustyAceError> {
 
         process_input(&mut entry_context);
 
+        let (width, height) = window.get_size();
+        let view_matrix = camera.generate_view_matrix();
+        let projection_matrix = camera.generate_projection_matrix(width as f32, height as f32);
+
+        // --- BEGIN RENDER PASS ---
+        // todo: this will all be moved into a render system, but for now, we're leaving it as it is
+        single_pass_fbo.bind(FrameBufferRDBehavior::RD);
+        // We're now rendering inside the FBO
+        unsafe {
+            // TODO: move this into it's own function
+            let gl_ctx = assets.gl_ctx();
+            gl_ctx.Enable(gl::DEPTH_TEST);
+            gl_ctx.ClearColor(0.0f32, 0.2f32, 0.0f32, 1.0f32);
+            gl_ctx.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        }
+
         // TODO: Convert this to a real ECS system and implement physics.
         // Like _that's_ going to be easy.
         // Physics will need to take into account time-steps
+        // and so will networking!
+        // Multiple threads, either per-object or per-system (although networking should defintely be on its own thread. Packet consistency is important)
         // See if nphysics will work or if we'll need to do our own crude physics modeling
-        render.render(GLMode::Triangles, |shdr| {
+        cube_render.render(GLMode::Triangles, |shdr| {
             // This is a function that allows per-frame uniform setting. This will become important with transformations,
             // As this can be used to change the position of an object per-frame...
             // However, it could be wrapped in an optional member or perhaps another method to allow for rendering with shaders that do not have uniforms without passing in an empty closure
+            assets.find_texture("texture1").expect("Failed to find texture").bind(TextureUnit::Slot0);
+            assets.find_texture("texture2").expect("Failed to find texture").bind(TextureUnit::Slot1);
+
             let model = glm::rotate(&glm::Mat4::identity(), (glfw.get_time() as f32) * utils::radians(50.0), &glm::vec3(0.5, 1.0, 0.0));
             shdr.set_uniform("model", &model);
-            shdr.set_uniform("view", &camera.generate_view_matrix());
-            let (width, height) = window.get_size();
-            shdr.set_uniform("projection", &camera.generate_projection_matrix(width as f32, height as f32));
+            shdr.set_uniform("view", &view_matrix);
+            shdr.set_uniform("projection", &projection_matrix);
+        })?;
+
+
+        // -- render skybox here --
+        unsafe {
+            let gl_ctx = assets.gl_ctx();
+            gl_ctx.DepthFunc(gl::LEQUAL);
+        }
+
+        skybox_render.render(GLMode::Triangles, |shdr| {
+            assets.find_texture("skybox").expect("Failed to find texture").bind(TextureUnit::Slot0);
+
+            let view = glm::mat3_to_mat4(&glm::mat4_to_mat3(&view_matrix));
+            shdr.set_uniform("view", &view);
+            shdr.set_uniform("projection", &projection_matrix);
+        })?;
+
+        unsafe {
+            let gl_ctx = assets.gl_ctx();
+            gl_ctx.DepthFunc(gl::LESS);
+        }
+
+
+        single_pass_fbo.unbind();
+        // We're no longer rendering inside the FBO.
+        unsafe {
+            // TODO: move this into it's own function
+            let gl_ctx = assets.gl_ctx();
+            gl_ctx.Disable(gl::DEPTH_TEST);
+            gl_ctx.ClearColor(1.0, 1.0, 1.0, 1.0);
+            gl_ctx.Clear(gl::COLOR_BUFFER_BIT);
+        }
+        quad_render.render(GLMode::Triangles, |_| {
+            // There are no uniforms for this!
+            single_pass_fbo.get_texture(0).bind(TextureUnit::Slot0);
         })?;
 
         window.swap_buffers();
+
+        // --- END RENDER PASS ---
     }
 
 
@@ -175,7 +297,7 @@ struct EntryContext<'a> {
     first_mouse: &'a mut bool,
     last_mouse_x: &'a mut f32,
     last_mouse_y: &'a mut f32,
-    gl_context: &'a gl::Gl,
+    gl_context: Rc<gl::Gl>,
     window: &'a mut glfw::Window,
     camera: &'a mut camera::Camera,
 }
@@ -238,6 +360,10 @@ pub enum RustyAceError {
     IOError(io::Error),
     #[error("Image Load Failed: {0}")]
     ImageError(image::ImageError),
+    #[error("Bad Texture: {0}")]
+    TextureError(TextureError),
+    #[error("Asset not found: {0}")]
+    AssetNotFound(String),
 }
 
 impl From<OpenGLError> for RustyAceError {
@@ -257,6 +383,7 @@ impl From<TextureError> for RustyAceError {
         match err {
             TextureError::ImageError(err_i) => RustyAceError::ImageError(err_i),
             TextureError::OpenGLError(err_o) => RustyAceError::OpenGLError(err_o),
+            _ => RustyAceError::TextureError(err),
         }
     }
 }

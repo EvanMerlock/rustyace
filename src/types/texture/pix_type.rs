@@ -1,6 +1,7 @@
 use crate::gl;
 
 #[allow(non_camel_case_types)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub enum PixelDataFormat {
     R            = gl::RED as isize,
     G            = gl::GREEN as isize,
@@ -23,6 +24,7 @@ pub enum PixelDataFormat {
     DepthStencil = gl::DEPTH_STENCIL as isize,
 }
 
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub enum PixelDataType {
     UnsignedByte        = gl::UNSIGNED_BYTE as isize,
     Byte                = gl::BYTE as isize,

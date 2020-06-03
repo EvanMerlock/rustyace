@@ -15,25 +15,14 @@ pub struct AttributeProperties {
 impl AttributeProperties {
     pub fn new(size: AttributeComponentSize, attrib_type: GLType, normalized: bool, stride: i32, offset: u32) -> AttributeProperties {
 
-        let compute_size = match attrib_type {
-            GLType::Byte => mem::size_of::<i8>(),
-            GLType::Double => mem::size_of::<f64>(),
-            GLType::Fixed => mem::size_of::<i32>(),
-            GLType::Float => mem::size_of::<f32>(),
-            GLType::HalfFloat => mem::size_of::<u16>(),
-            GLType::Int => mem::size_of::<i32>(),
-            GLType::Short => mem::size_of::<i16>(),
-            GLType::UnsignedByte => mem::size_of::<u8>(),
-            GLType::UnsignedInt => mem::size_of::<u32>(),
-            GLType::UnsignedShort => mem::size_of::<u16>(),
-        } as u32;
+        let compute_size = attrib_type.sizeof();
 
         AttributeProperties {
             attrib_size: size,
             attrib_type: attrib_type,
             normalized: normalized,
             stride: stride * (compute_size as i32),
-            offset: offset * compute_size,
+            offset: offset * (compute_size as u32),
         }
     }
 }

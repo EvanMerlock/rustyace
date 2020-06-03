@@ -1,6 +1,7 @@
 use crate::gl;
 
 #[allow(non_camel_case_types)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub enum InternalStorage {
     Depth                       = gl::DEPTH_COMPONENT as isize,
     DepthStencil                = gl::DEPTH_STENCIL as isize,

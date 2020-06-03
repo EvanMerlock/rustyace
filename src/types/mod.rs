@@ -13,6 +13,8 @@ mod texture;
 mod buffers;
 mod gl_error;
 mod shaders;
+mod typed_buffer;
+mod model;
 
 // Re-exports for convienence
 pub use gl_tex_unit::*;
@@ -25,3 +27,5 @@ pub use self::texture::*;
 pub use self::buffers::*;
 pub use self::gl_error::*;
 pub use self::shaders::*;
+pub use self::typed_buffer::*;
+pub use self::model::*;
