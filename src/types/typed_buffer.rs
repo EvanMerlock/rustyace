@@ -1,4 +1,3 @@
-use std::mem;
 use std::ffi::c_void;
 use crate::types::*;
 pub trait TypedBuffer {

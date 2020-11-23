@@ -1,6 +1,4 @@
 use crate::gl;
-use crate::types::*;
-use std::rc::Rc;
 use std::path::{Path, PathBuf};
 use std::fs;
 

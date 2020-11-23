@@ -2,7 +2,11 @@ use crate::types::*;
 use std::rc::Rc;
 
 mod memory_model;
+mod obj_model;
+mod material;
 pub use self::memory_model::*;
+pub use self::obj_model::*;
+pub use self::material::*;
 
 // TODO: Figure out if we need to split models into meshes (we probably do)
 // And the best way to communicate data to the GPU.

@@ -1,16 +1,3 @@
-pub const TRI_VERTICES: [f32; 32] = [
-        // positions      // colors        // texture coords
-        0.5,  0.5, 0.0,   1.0, 0.0, 0.0,   1.0, 1.0, // top right
-        0.5, -0.5, 0.0,   0.0, 1.0, 0.0,   1.0, 0.0, // bottom right
-       -0.5, -0.5, 0.0,   0.0, 0.0, 1.0,   0.0, 0.0, // bottom left
-       -0.5,  0.5, 0.0,   1.0, 1.0, 0.0,   0.0, 1.0  // top left 
-];
-
-pub const TRI_INDICES: [u32; 6] = [
-    0, 1, 3,   // first triangle
-    1, 2, 3    // second triangle
-];
-
 pub const CUBE_VERTICES: [f32; 192] = [
     // positions       // colors       // tex coords
     -1.0, -1.0,  1.0,  1.0, 0.0, 0.0,  0.0, 0.0, // front

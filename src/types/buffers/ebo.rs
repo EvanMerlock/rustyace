@@ -1,6 +1,5 @@
 use crate::gl;
 use std::rc::Rc;
-use std::mem;
 use crate::types::*;
 
 pub struct ElementArrayObj {

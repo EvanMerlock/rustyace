@@ -2,14 +2,22 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use crate::types::*;
 use crate::gl;
-use crate::components;
 use crate::RustyAceError;
 use std::path::{Path, PathBuf};
 
+mod loaded;
+mod namespace;
+
+use namespace::*;
+use loaded::*;
+
 pub struct AssetContainer {
     asset_path: PathBuf,
+    // How in the hell do we free unused data?
+    // Implement a GC? ;)
     gl_context: Rc<gl::Gl>,
     models: HashMap<String, Rc<dyn Model>>,
+    materials: HashMap<String, Rc<Material>>,
     // is this necessary?
     // potentially if we wish to re-use shaders to recompile new programs
     // look into if major games keep shaders resident in memory
@@ -26,6 +34,7 @@ impl AssetContainer {
             asset_path: asset_container_location.as_ref().to_path_buf(),
             gl_context: Rc::new(gl_context),
             models: HashMap::new(),
+            materials: HashMap::new(),
             shader_programs: HashMap::new(),
             textures: HashMap::new(),
         }
@@ -111,4 +120,22 @@ impl AssetContainer {
     pub fn find_texture(&self, name: &str) -> Result<Rc<Texture>, RustyAceError> {
         self.textures.get(name).ok_or(RustyAceError::AssetNotFound(name.to_string())).map(|tex| tex.clone())
     }
+
+    pub fn add_material(&mut self, mat: Material) {
+        self.materials.insert(mat.name.clone(), Rc::new(mat));
+    }
 }
+
+/*pub trait Asset {
+    fn get_name(&self) -> &str;
+    fn get_type(&self) -> AssetType;
+}
+
+pub enum AssetType {
+    Model,
+    Material,
+    ShaderProgram,
+    Texture,
+}
+
+type AssetRef = Rc<dyn Asset>;*/

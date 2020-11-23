@@ -49,6 +49,9 @@ fn main() -> Result<(), RustyAceError> {
     let mut assets = asset_loading::AssetContainer::new("./assets", gl_context);
     debug::init_debug_functionality(assets.gl_ctx());
 
+    //let obj_model = ObjModel::from_file(assets.gl_ctx(), "./assets/test/backpack.obj");
+
+
     // TODO: Develop a framebuffer container?
     // Not sure how we should be properly managing framebuffers tbh
     // esp. considering screen size can change... the framebuffer might need to realloc every time the screen size changes which is yikes
@@ -76,7 +79,7 @@ fn main() -> Result<(), RustyAceError> {
         PixelDataFormat::RGB, PixelDataType::UnsignedByte
     );
     assets.add_cubemap("skybox", "skybox", tex_config_cm)?;
-    let assembled_shader = assets.add_program("shader_basic", "basic/basic_vert_shader.vert", "basic/basic_frag_shader.frag", None)?;
+    let assembled_shader = assets.add_program("shader_basic", "basic/tex_norm/vertex_tex_norm.vert", "basic/tex_norm/fragment_tex_norm.frag", None)?;
     
     assembled_shader.use_program();
     assembled_shader.assign_texture_to_unit("texture1", types::TextureUnit::Slot0);

@@ -1,5 +1,3 @@
-use std::rc::Rc;
-use crate::types::*;
 use crate::gl;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
