@@ -2,6 +2,7 @@
 
 members = [
     "ace-engine",
+    "asset-management",
 ]
 
 [profile.dev.package.image]

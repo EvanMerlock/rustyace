@@ -3,28 +3,23 @@ use std::rc::Rc;
 use crate::types::*;
 use crate::gl;
 use crate::RustyAceError;
+use asset_management::AssetStore;
 use std::path::{Path, PathBuf};
-
-mod loaded;
-mod namespace;
-
-use namespace::*;
-use loaded::*;
 
 pub struct AssetContainer {
     asset_path: PathBuf,
     // How in the hell do we free unused data?
     // Implement a GC? ;)
     gl_context: Rc<gl::Gl>,
-    models: HashMap<String, Rc<dyn Model>>,
-    materials: HashMap<String, Rc<Material>>,
+    models: AssetStore<dyn Model>,
+    materials: AssetStore<Material>,
     // is this necessary?
     // potentially if we wish to re-use shaders to recompile new programs
     // look into if major games keep shaders resident in memory
     // they shouldn't take up too much space, but you never know...
     //shaders: HashMap<String, Rc<Shader>>,
-    shader_programs: HashMap<String, Rc<CompiledShaderProgram>>,
-    textures: HashMap<String, Rc<Texture>>,
+    shader_programs: AssetStore<CompiledShaderProgram>,
+    textures: AssetStore<Texture>,
 
 }
 

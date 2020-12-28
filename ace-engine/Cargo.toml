@@ -16,6 +16,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 image = "0.23.4"
 tobj = "2.0.1"
+asset-management = { path = "../asset-management" }
 
 [build-dependencies]
 gl_generator = "0.14.0"

@@ -22,6 +22,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "asset-management"
+version = "0.1.0"
+
+[[package]]
 name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -615,6 +619,7 @@ dependencies = [
 name = "rustyace"
 version = "0.1.0"
 dependencies = [
+ "asset-management",
  "gl_generator",
  "glfw",
  "image",
