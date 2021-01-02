@@ -2,28 +2,30 @@
 #![deny(rust_2018_idioms)]
 #![deny(future_incompatible)]
 
+use ace_gl_types as types;
+use ace_gl_types::gl;
+use asset_management::asset_loading;
+use components::*;
 use glfw::{Action, Context, Key};
-use std::rc::Rc;
-use std::io;
 use image;
+use nalgebra_glm as glm;
+use std::io;
+use std::rc::Rc;
 use thiserror::Error;
 use types::*;
-use components::*;
-use nalgebra_glm as glm;
-use ace_gl_types as types;
-use ace_gl_types::gl as gl;
-use asset_management::asset_loading as asset_loading;
 
+mod actions;
 mod components;
-mod utils;
 mod debug;
+mod utils;
 
 fn main() -> Result<(), RustyAceError> {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     debug::init_debug_context(&mut glfw);
 
     // TODO: Read from configuration file to set some window defaults!
-    let (mut window, events) = glfw.create_window(300, 300, "RustyAce", glfw::WindowMode::Windowed)
+    let (mut window, events) = glfw
+        .create_window(300, 300, "RustyAce", glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
 
     window.set_cursor_mode(glfw::CursorMode::Disabled);
@@ -32,7 +34,7 @@ fn main() -> Result<(), RustyAceError> {
     // This isn't as efficient as passing around references, and should eventually be migrated to lifetimes.
     let gl_context = gl::Gl::load_with(|s| window.get_proc_address(s) as *const _);
     unsafe {
-        gl_context.Viewport(0,0,300,300);
+        gl_context.Viewport(0, 0, 300, 300);
     }
 
     let mut assets = asset_loading::AssetContainer::new("./assets", gl_context);
@@ -40,45 +42,75 @@ fn main() -> Result<(), RustyAceError> {
 
     //let obj_model = ObjModel::from_file(assets.gl_ctx(), "./assets/test/backpack.obj");
 
-
     // TODO: Develop a framebuffer container?
     // Not sure how we should be properly managing framebuffers tbh
     // esp. considering screen size can change... the framebuffer might need to realloc every time the screen size changes which is yikes
     let win_size = window.get_size();
     let mut single_pass_fbo = FrameBuffer::new(assets.gl_ctx());
     single_pass_fbo.bind(FrameBufferRDBehavior::RD);
-    single_pass_fbo.attach_texture(win_size.0, win_size.1, 
-        TexConfig::new(TextureType::Texture2D, InternalStorage::RGB, PixelDataFormat::RGB, PixelDataType::UnsignedByte), 
-        FrameBufferAttachment::Color(0));
-    single_pass_fbo.attach_renderbuffer(win_size.0, win_size.1, InternalStorage::Depth24Stencil8, FrameBufferAttachment::DepthStencil);
+    single_pass_fbo.attach_texture(
+        win_size.0,
+        win_size.1,
+        TexConfig::new(
+            TextureType::Texture2D,
+            InternalStorage::RGB,
+            PixelDataFormat::RGB,
+            PixelDataType::UnsignedByte,
+        ),
+        FrameBufferAttachment::Color(0),
+    );
+    single_pass_fbo.attach_renderbuffer(
+        win_size.0,
+        win_size.1,
+        InternalStorage::Depth24Stencil8,
+        FrameBufferAttachment::DepthStencil,
+    );
     single_pass_fbo.unbind();
 
     // TODO: develop an asset container
     // We shouldn't have to manually specify all of the assets the program uses in the main function
     // An asset container should be used to store it all
     let tex_config = TexConfig::new(
-        TextureType::Texture2D, InternalStorage::RGB,
-        PixelDataFormat::RGB, PixelDataType::UnsignedByte
+        TextureType::Texture2D,
+        InternalStorage::RGB,
+        PixelDataFormat::RGB,
+        PixelDataType::UnsignedByte,
     );
     assets.add_texture("texture1", "texture1.jpg", tex_config.clone())?;
     assets.add_texture("texture2", "texture2.png", tex_config.clone())?;
 
     let tex_config_cm = TexConfig::new(
-        TextureType::TextureCubeMap, InternalStorage::RGB,
-        PixelDataFormat::RGB, PixelDataType::UnsignedByte
+        TextureType::TextureCubeMap,
+        InternalStorage::RGB,
+        PixelDataFormat::RGB,
+        PixelDataType::UnsignedByte,
     );
     assets.add_cubemap("skybox", "skybox", tex_config_cm)?;
-    let assembled_shader = assets.add_program("shader_basic", "basic/tex_norm/vertex_tex_norm.vert", "basic/tex_norm/fragment_tex_norm.frag", None)?;
-    
+    let assembled_shader = assets.add_program(
+        "shader_basic",
+        "basic/tex_norm/vertex_tex_norm.vert",
+        "basic/tex_norm/fragment_tex_norm.frag",
+        None,
+    )?;
     assembled_shader.use_program();
     assembled_shader.assign_texture_to_unit("texture1", types::TextureUnit::Slot0);
     assembled_shader.assign_texture_to_unit("texture2", types::TextureUnit::Slot1);
 
-    let screenspace_shader = assets.add_program("screenspace_shader", "frame/framebuffer.vert", "frame/framebuffer.frag", None)?;
+    let screenspace_shader = assets.add_program(
+        "screenspace_shader",
+        "frame/framebuffer.vert",
+        "frame/framebuffer.frag",
+        None,
+    )?;
     screenspace_shader.use_program();
     screenspace_shader.assign_texture_to_unit("screenTexture", types::TextureUnit::Slot0);
 
-    let skybox_shader = assets.add_program("skybox_shader", "skybox/skybox.vert", "skybox/skybox.frag", None)?;
+    let skybox_shader = assets.add_program(
+        "skybox_shader",
+        "skybox/skybox.vert",
+        "skybox/skybox.frag",
+        None,
+    )?;
     skybox_shader.use_program();
     skybox_shader.assign_texture_to_unit("skybox", TextureUnit::Slot0);
 
@@ -89,80 +121,79 @@ fn main() -> Result<(), RustyAceError> {
     // Note that any voxel format would still need to specify extended surfaces; rendering a ton of individual cubes might be rough on the GPU
     // Although instanced rendering might be able to help reduce the issue
     // We could also implement both a voxel-model format and a normal model format, to make it easier to develop voxel models while also allowing model flexibility.
-    let cube_model = Rc::new(ResidentModel::new(assets.gl_ctx(), &renderable::CUBE_VERTICES, &renderable::CUBE_INDICES, assembled_shader, |vao| {
-        //TODO: is this the best way to have configurable attribute indices?
-        // Is there a more elegant solution?
-        // Or this this the most elegant solution?
-        // We seem to be using callbacks at least twice, including this one.
-        // This might be the best solution, although some form of interchange between shaders and VAO's would maybe be good (since shaders define what they accept)
+    let cube_model = Rc::new(ResidentModel::new(
+        assets.gl_ctx(),
+        &renderable::CUBE_VERTICES,
+        &renderable::CUBE_INDICES,
+        assembled_shader,
+        |vao| {
+            //TODO: is this the best way to have configurable attribute indices?
+            // Is there a more elegant solution?
+            // Or this this the most elegant solution?
+            // We seem to be using callbacks at least twice, including this one.
+            // This might be the best solution, although some form of interchange between shaders and VAO's would maybe be good (since shaders define what they accept)
 
-        // Now that VAO's are associated with models, they can be configured on a per-model basis.
-        // _Most_ models should load in with the same set of vertices (position, color?, texture, normal)
-        // HOWEVER, there are special cases! Thus, ResidentModel should probably keep the VAO configuration, and file loaded models should automagically configure the VAO.
-        // Esp. considering that OBJ files have the same vertex formatting! 
+            // Now that VAO's are associated with models, they can be configured on a per-model basis.
+            // _Most_ models should load in with the same set of vertices (position, color?, texture, normal)
+            // HOWEVER, there are special cases! Thus, ResidentModel should probably keep the VAO configuration, and file loaded models should automagically configure the VAO.
+            // Esp. considering that OBJ files have the same vertex formatting!
 
-        vao.configure_index(
-            0, 
-            AttributeProperties::new(
-                AttributeComponentSize::Three, 
-                GLType::Float, 
-                false, 
-                8, 
-                0));
+            vao.configure_index(
+                0,
+                AttributeProperties::new(AttributeComponentSize::Three, GLType::Float, false, 8, 0),
+            );
 
-        vao.configure_index(1, AttributeProperties::new(
-            AttributeComponentSize::Three, 
-            GLType::Float, 
-            false, 
-            8, 
-            3));
+            vao.configure_index(
+                1,
+                AttributeProperties::new(AttributeComponentSize::Three, GLType::Float, false, 8, 3),
+            );
 
-        vao.configure_index(2,
-            AttributeProperties::new(
-                AttributeComponentSize::Two,
-                GLType::Float,
-                false,
-                8,
-                6
-            )
-        );
-    }));
+            vao.configure_index(
+                2,
+                AttributeProperties::new(AttributeComponentSize::Two, GLType::Float, false, 8, 6),
+            );
+        },
+    ));
 
-    let screenspace_quad = Rc::new(ResidentModel::new(assets.gl_ctx(), &renderable::QUAD_VERTICIES, &renderable::QUAD_INDICIES, screenspace_shader, |vao| {
-        vao.configure_index(0, AttributeProperties::new(
-            AttributeComponentSize::Two,
-            GLType::Float, 
-            false, 
-            4, 
-            0));
+    let screenspace_quad = Rc::new(ResidentModel::new(
+        assets.gl_ctx(),
+        &renderable::QUAD_VERTICIES,
+        &renderable::QUAD_INDICIES,
+        screenspace_shader,
+        |vao| {
+            vao.configure_index(
+                0,
+                AttributeProperties::new(AttributeComponentSize::Two, GLType::Float, false, 4, 0),
+            );
 
-        vao.configure_index(1, AttributeProperties::new(
-            AttributeComponentSize::Two, 
-            GLType::Float, 
-            false, 
-            4, 
-            2));
-    }));
+            vao.configure_index(
+                1,
+                AttributeProperties::new(AttributeComponentSize::Two, GLType::Float, false, 4, 2),
+            );
+        },
+    ));
 
-    let skybox_model = Rc::new(ResidentModel::new(assets.gl_ctx(), &renderable::CUBE_VERTICES, &renderable::CUBE_INDICES, skybox_shader, |vao| {
-        vao.configure_index(
-            0, 
-            AttributeProperties::new(
-                AttributeComponentSize::Three, 
-                GLType::Float, 
-                false, 
-                8, 
-                0));
-    }));
+    let skybox_model = Rc::new(ResidentModel::new(
+        assets.gl_ctx(),
+        &renderable::CUBE_VERTICES,
+        &renderable::CUBE_INDICES,
+        skybox_shader,
+        |vao| {
+            vao.configure_index(
+                0,
+                AttributeProperties::new(AttributeComponentSize::Three, GLType::Float, false, 8, 0),
+            );
+        },
+    ));
 
     let mut camera = camera::Camera::new(
-        glm::vec3(0.0, 0.0, 3.0), 
-        glm::vec3(0.0, 1.0, 0.0), 
+        glm::vec3(0.0, 0.0, 3.0),
+        glm::vec3(0.0, 1.0, 0.0),
         glm::vec3(0.0, 0.0, -1.0),
-        camera::PITCH, 
-        camera::YAW, 
-        camera::SENSITIVITY, 
-        45.0
+        camera::PITCH,
+        camera::YAW,
+        camera::SENSITIVITY,
+        45.0,
     );
 
     let cube_render = renderable::Renderable::new(assets.gl_ctx(), cube_model)?;
@@ -182,10 +213,9 @@ fn main() -> Result<(), RustyAceError> {
     let mut last_mouse_y = 0.0;
 
     while !window.should_close() {
-
         let current_frame = glfw.get_time() as f32;
         delta_t = current_frame - last_frame;
-        last_frame = current_frame;        
+        last_frame = current_frame;
 
         let mut entry_context = EntryContext {
             dt: delta_t,
@@ -230,15 +260,24 @@ fn main() -> Result<(), RustyAceError> {
             // This is a function that allows per-frame uniform setting. This will become important with transformations,
             // As this can be used to change the position of an object per-frame...
             // However, it could be wrapped in an optional member or perhaps another method to allow for rendering with shaders that do not have uniforms without passing in an empty closure
-            assets.find_texture("texture1").expect("Failed to find texture").bind(TextureUnit::Slot0);
-            assets.find_texture("texture2").expect("Failed to find texture").bind(TextureUnit::Slot1);
+            assets
+                .find_texture("texture1")
+                .expect("Failed to find texture")
+                .bind(TextureUnit::Slot0);
+            assets
+                .find_texture("texture2")
+                .expect("Failed to find texture")
+                .bind(TextureUnit::Slot1);
 
-            let model = glm::rotate(&glm::Mat4::identity(), (glfw.get_time() as f32) * utils::radians(50.0), &glm::vec3(0.5, 1.0, 0.0));
+            let model = glm::rotate(
+                &glm::Mat4::identity(),
+                (glfw.get_time() as f32) * utils::radians(50.0),
+                &glm::vec3(0.5, 1.0, 0.0),
+            );
             shdr.set_uniform("model", &model);
             shdr.set_uniform("view", &view_matrix);
             shdr.set_uniform("projection", &projection_matrix);
         })?;
-
 
         // -- render skybox here --
         unsafe {
@@ -247,7 +286,10 @@ fn main() -> Result<(), RustyAceError> {
         }
 
         skybox_render.render(GLMode::Triangles, |shdr| {
-            assets.find_texture("skybox").expect("Failed to find texture").bind(TextureUnit::Slot0);
+            assets
+                .find_texture("skybox")
+                .expect("Failed to find texture")
+                .bind(TextureUnit::Slot0);
 
             let view = glm::mat3_to_mat4(&glm::mat4_to_mat3(&view_matrix));
             shdr.set_uniform("view", &view);
@@ -258,7 +300,6 @@ fn main() -> Result<(), RustyAceError> {
             let gl_ctx = assets.gl_ctx();
             gl_ctx.DepthFunc(gl::LESS);
         }
-
 
         single_pass_fbo.unbind();
         // We're no longer rendering inside the FBO.
@@ -279,7 +320,6 @@ fn main() -> Result<(), RustyAceError> {
         // --- END RENDER PASS ---
     }
 
-
     Ok(())
 }
 
@@ -299,14 +339,11 @@ fn handle_window_event(ctx: &mut EntryContext<'_>, event: glfw::WindowEvent) {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
             ctx.window.set_should_close(true)
-        },
-        glfw::WindowEvent::FramebufferSize(width, height) => {
-            unsafe {
-                ctx.gl_context.Viewport(0, 0, width, height);
-            }
+        }
+        glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
+            ctx.gl_context.Viewport(0, 0, width, height);
         },
         glfw::WindowEvent::CursorPos(x, y) => {
-
             let x = x as f32;
             let y = y as f32;
 
@@ -323,23 +360,27 @@ fn handle_window_event(ctx: &mut EntryContext<'_>, event: glfw::WindowEvent) {
             *ctx.last_mouse_y = y;
 
             ctx.camera.process_mouse_input(x_offset, y_offset, true);
-        },
+        }
         _ => {}
     }
 }
 
 fn process_input(ctx: &mut EntryContext<'_>) {
     if ctx.window.get_key(Key::W) == Action::Press {
-        ctx.camera.process_movement(camera::CameraMovement::Fwd, ctx.dt);
+        ctx.camera
+            .process_movement(camera::CameraMovement::Fwd, ctx.dt);
     }
     if ctx.window.get_key(Key::A) == Action::Press {
-        ctx.camera.process_movement(camera::CameraMovement::Left, ctx.dt);
+        ctx.camera
+            .process_movement(camera::CameraMovement::Left, ctx.dt);
     }
     if ctx.window.get_key(Key::S) == Action::Press {
-        ctx.camera.process_movement(camera::CameraMovement::Bwd, ctx.dt);
+        ctx.camera
+            .process_movement(camera::CameraMovement::Bwd, ctx.dt);
     }
     if ctx.window.get_key(Key::D) == Action::Press {
-        ctx.camera.process_movement(camera::CameraMovement::Right, ctx.dt);
+        ctx.camera
+            .process_movement(camera::CameraMovement::Right, ctx.dt);
     }
 }
 
