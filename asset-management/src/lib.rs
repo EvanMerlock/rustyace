@@ -4,6 +4,8 @@
 
 use std::collections::HashMap;
 use std::rc::Rc;
+use ace_gl_types as types;
 
-mod loaded;
-mod namespace;
+pub mod loaded;
+pub mod namespace;
+pub mod asset_loading;

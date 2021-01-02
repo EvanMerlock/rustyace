@@ -3,6 +3,7 @@
 members = [
     "ace-engine",
     "asset-management",
+    "ace-gl-types",
 ]
 
 [profile.dev.package.image]

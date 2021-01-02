@@ -10,24 +10,13 @@ use thiserror::Error;
 use types::*;
 use components::*;
 use nalgebra_glm as glm;
+use ace_gl_types as types;
+use ace_gl_types::gl as gl;
+use asset_management::asset_loading as asset_loading;
 
-mod types;
 mod components;
 mod utils;
-mod asset_loading;
 mod debug;
-
-mod gl {
-    use std::fmt;
-
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
-    impl fmt::Debug for Gl {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "GL Context")
-        }
-    }
-}
 
 fn main() -> Result<(), RustyAceError> {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -84,7 +73,6 @@ fn main() -> Result<(), RustyAceError> {
     assembled_shader.use_program();
     assembled_shader.assign_texture_to_unit("texture1", types::TextureUnit::Slot0);
     assembled_shader.assign_texture_to_unit("texture2", types::TextureUnit::Slot1);
-
 
     let screenspace_shader = assets.add_program("screenspace_shader", "frame/framebuffer.vert", "frame/framebuffer.frag", None)?;
     screenspace_shader.use_program();
@@ -365,6 +353,8 @@ pub enum RustyAceError {
     ImageError(image::ImageError),
     #[error("Bad Texture: {0}")]
     TextureError(TextureError),
+    #[error("Shader compile error: {0}")]
+    ShaderCompileError(ShaderCompileError),
     #[error("Asset not found: {0}")]
     AssetNotFound(String),
 }
@@ -388,5 +378,11 @@ impl From<TextureError> for RustyAceError {
             TextureError::OpenGLError(err_o) => RustyAceError::OpenGLError(err_o),
             _ => RustyAceError::TextureError(err),
         }
+    }
+}
+
+impl From<ShaderCompileError> for RustyAceError {
+    fn from(err: ShaderCompileError) -> Self {
+        RustyAceError::ShaderCompileError(err)
     }
 }

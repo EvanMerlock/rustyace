@@ -1,5 +1,4 @@
 use crate::gl;
-use crate::RustyAceError;
 use std::rc::Rc;
 use std::ptr;
 use std::fmt;
@@ -10,6 +9,7 @@ use std::io::prelude::*;
 use std::fs;
 use std::path::Path;
 use crate::types::*;
+use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum ShaderType {
@@ -181,7 +181,7 @@ impl CompiledShaderProgram {
         }
     }
 
-    pub fn generate_program<S: AsRef<Path>>(gl_ctx: Rc<gl::Gl>, vs_path: S, fs_path: S, gs_path: Option<S>) -> Result<CompiledShaderProgram, RustyAceError> {
+    pub fn generate_program<S: AsRef<Path>>(gl_ctx: Rc<gl::Gl>, vs_path: S, fs_path: S, gs_path: Option<S>) -> Result<CompiledShaderProgram, ShaderCompileError> {
         let mut shdr_prog = ShaderProgram::new(gl_ctx.clone());
         let vs_shdr = Shader::from_path(gl_ctx.clone(), vs_path, ShaderType::VertexShader)?;
         vs_shdr.compile_shader()?;
@@ -204,7 +204,7 @@ impl CompiledShaderProgram {
 
     }
 
-    pub(crate) fn set_uniform<T: UniformType>(&self, name: &str, uniform: &T) {
+    pub fn set_uniform<T: UniformType>(&self, name: &str, uniform: &T) {
         let loc: i32;
         unsafe {
             let c_str = CString::new(name).expect("Internal NULL detected. Uniform location failed to convert to valid CString");
@@ -213,7 +213,7 @@ impl CompiledShaderProgram {
         uniform.assign_to_current_program(self.gl_ctx.as_ref(), loc);
     }
 
-    pub(crate) fn assign_texture_to_unit(&self, name: &str, tex_unit: TextureUnit) {
+    pub fn assign_texture_to_unit(&self, name: &str, tex_unit: TextureUnit) {
         self.set_uniform(name, &tex_unit)
     }
 
@@ -227,5 +227,25 @@ impl CompiledShaderProgram {
         unsafe {
             self.gl_ctx.UseProgram(0);
         }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum ShaderCompileError {
+    #[error("OpenGL Error: {0}")]
+    OpenGLError(OpenGLError),
+    #[error("IO Error: {0}")]
+    IOError(io::Error),
+}
+
+impl From<io::Error> for ShaderCompileError {
+    fn from(err: io::Error) -> ShaderCompileError {
+        ShaderCompileError::IOError(err)
+    }
+}
+
+impl From<OpenGLError> for ShaderCompileError {
+    fn from(err: OpenGLError) -> ShaderCompileError {
+        ShaderCompileError::OpenGLError(err)
     }
 }

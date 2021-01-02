@@ -1,6 +1,6 @@
 use crate::gl;
 
-pub(crate) trait UniformType {
+pub trait UniformType {
     fn assign_to_current_program(&self, gl_ctx: &gl::Gl, loc: i32);
 }
 

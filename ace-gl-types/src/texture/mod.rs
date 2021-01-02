@@ -5,6 +5,7 @@ use std::path::Path;
 use thiserror::Error;
 use std::ptr;
 use crate::types::*;
+use std::io;
 
 mod gl_internalstorage;
 mod pix_type;
@@ -143,6 +144,8 @@ pub enum TextureError {
     OpenGLError(OpenGLError),
     #[error("Loading the texture image failed: {0}")]
     ImageError(image::ImageError),
+    #[error("Loading the texture file failed: {0}")]
+    IOError(io::Error),
     #[error("Bad 2D texture configuration generated")]
     BadTextureConfig,
 }
@@ -156,5 +159,11 @@ impl From<OpenGLError> for TextureError {
 impl From<image::ImageError> for TextureError {
     fn from(err: image::ImageError) -> Self {
         TextureError::ImageError(err)
+    }
+}
+
+impl From<io::Error> for TextureError {
+    fn from(err: io::Error) -> Self {
+        TextureError::IOError(err)
     }
 }

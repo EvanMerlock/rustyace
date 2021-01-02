@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use crate::types::*;
-use crate::gl;
-use crate::RustyAceError;
+use ace_gl_types::gl;
 use std::path::{Path, PathBuf};
 
 pub struct AssetContainer {
@@ -38,7 +37,7 @@ impl AssetContainer {
         self.gl_context.clone()
     }
 
-    pub fn add_program<S: AsRef<Path>, V: ToString>(&mut self, name: V, vertex_name: S, fragment_name: S, geometry_name: Option<S>) -> Result<Rc<CompiledShaderProgram>, RustyAceError> {
+    pub fn add_program<S: AsRef<Path>, V: ToString>(&mut self, name: V, vertex_name: S, fragment_name: S, geometry_name: Option<S>) -> Result<Rc<CompiledShaderProgram>, ShaderCompileError> {
         // Initialize new shader program to attach shaders to
         let mut shdr_prog = ShaderProgram::new(self.gl_ctx());
 
@@ -84,11 +83,11 @@ impl AssetContainer {
         }
     }
 
-    pub fn find_program(&self, name: &str) -> Result<Rc<CompiledShaderProgram>, RustyAceError> {
-        self.shader_programs.get(name).ok_or(RustyAceError::AssetNotFound(name.to_string())).map(|csp| csp.clone())
+    pub fn find_program(&self, name: &str) -> Option<Rc<CompiledShaderProgram>> {
+        self.shader_programs.get(name).map(|csp| csp.clone())
     }
 
-    pub fn add_texture<S: AsRef<Path>, V: ToString>(&mut self, name: V, texture_name: S, texture_cfg: TexConfig) -> Result<Rc<Texture>, RustyAceError> {
+    pub fn add_texture<S: AsRef<Path>, V: ToString>(&mut self, name: V, texture_name: S, texture_cfg: TexConfig) -> Result<Rc<Texture>, TextureError> {
         // Generate the asset path
         let mut tex_path = self.asset_path.clone();
         tex_path.push("textures");
@@ -100,7 +99,7 @@ impl AssetContainer {
         Ok(new_tex)
     }
 
-    pub fn add_cubemap<S: AsRef<Path>, V: ToString>(&mut self, name: V, cm_location: S, texture_cfg: TexConfig) -> Result<Rc<Texture>, RustyAceError> {
+    pub fn add_cubemap<S: AsRef<Path>, V: ToString>(&mut self, name: V, cm_location: S, texture_cfg: TexConfig) -> Result<Rc<Texture>, TextureError> {
         let mut tex_path = self.asset_path.clone();
         tex_path.push("textures");
         tex_path.push(cm_location.as_ref());
@@ -111,25 +110,11 @@ impl AssetContainer {
         Ok(new_tex)
     }
 
-    pub fn find_texture(&self, name: &str) -> Result<Rc<Texture>, RustyAceError> {
-        self.textures.get(name).ok_or(RustyAceError::AssetNotFound(name.to_string())).map(|tex| tex.clone())
+    pub fn find_texture(&self, name: &str) -> Option<Rc<Texture>> {
+        self.textures.get(name).map(|tex| tex.clone())
     }
 
     pub fn add_material(&mut self, mat: Material) {
         self.materials.insert(mat.name.clone(), Rc::new(mat));
     }
 }
-
-/*pub trait Asset {
-    fn get_name(&self) -> &str;
-    fn get_type(&self) -> AssetType;
-}
-
-pub enum AssetType {
-    Model,
-    Material,
-    ShaderProgram,
-    Texture,
-}
-
-type AssetRef = Rc<dyn Asset>;*/

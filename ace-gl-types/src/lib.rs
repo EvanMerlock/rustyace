@@ -1,6 +1,22 @@
 // TODO: move all of my types into this one module, one per file.
 // This will keep them in one place for importing
 #![allow(dead_code)]
+#![deny(nonstandard_style)]
+#![deny(rust_2018_idioms)]
+#![deny(future_incompatible)]
+
+pub mod gl {
+    use std::fmt;
+
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+    impl fmt::Debug for Gl {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "GL Context")
+        }
+    }
+}
+
 
 // Modules
 mod gl_tex_unit;
@@ -29,3 +45,5 @@ pub use self::gl_error::*;
 pub use self::shaders::*;
 pub use self::typed_buffer::*;
 pub use self::model::*;
+
+pub use crate as types;
