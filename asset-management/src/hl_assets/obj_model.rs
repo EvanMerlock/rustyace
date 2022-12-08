@@ -133,7 +133,7 @@ fn augment_bottom<N: nalgebra::Scalar + Copy>(me: nalgebra::DMatrix<N>, other: n
     // augmenting to the bottom (number of rows changes, number of columns is consistent)
     let (num_rows, num_columns) = me.shape();
 
-    if num_rows == 0 || num_rows == 0 {
+    if num_rows == 0 || num_columns == 0 {
         return None;
     }
 
