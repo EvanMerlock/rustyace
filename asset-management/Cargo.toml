@@ -8,3 +8,7 @@ edition = "2018"
 
 [dependencies]
 ace-gl-types = { path = "../ace-gl-types" }
+image = "0.23.4"
+tobj = "2.0.1"
+nalgebra-glm = "0.7.0"
+nalgebra = { version = "0.21.0" }

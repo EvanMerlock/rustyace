@@ -5,7 +5,7 @@ use ace_gl_types::gl;
 use std::path::{Path, PathBuf};
 
 pub struct AssetContainer {
-    asset_path: PathBuf,
+    asset_root: PathBuf,
     // How in the hell do we free unused data?
     // Implement a GC? ;)
     gl_context: Rc<gl::Gl>,
@@ -24,7 +24,7 @@ pub struct AssetContainer {
 impl AssetContainer {
     pub fn new<S: AsRef<Path>>(asset_container_location: S, gl_context: gl::Gl) -> AssetContainer {
         AssetContainer {
-            asset_path: asset_container_location.as_ref().to_path_buf(),
+            asset_root: asset_container_location.as_ref().to_path_buf(),
             gl_context: Rc::new(gl_context),
             models: HashMap::new(),
             materials: HashMap::new(),
@@ -42,11 +42,11 @@ impl AssetContainer {
         let mut shdr_prog = ShaderProgram::new(self.gl_ctx());
 
         // Generate the asset paths
-        let mut vs_path = self.asset_path.clone();
+        let mut vs_path = self.asset_root.clone();
         vs_path.push("shaders");
         vs_path.push(vertex_name);
 
-        let mut fs_path = self.asset_path.clone();
+        let mut fs_path = self.asset_root.clone();
         fs_path.push("shaders");
         fs_path.push(fragment_name);
 
@@ -64,7 +64,7 @@ impl AssetContainer {
 
         match geometry_name {
             Some(geo_internal_name) => {
-                let mut gs_loc = self.asset_path.clone();
+                let mut gs_loc = self.asset_root.clone();
                 gs_loc.push("shaders");
                 gs_loc.push(geo_internal_name);
                 let gs_shdr = Shader::from_path(self.gl_ctx().clone(), gs_loc, ShaderType::GeometryShader)?;
@@ -89,7 +89,7 @@ impl AssetContainer {
 
     pub fn add_texture<S: AsRef<Path>, V: ToString>(&mut self, name: V, texture_name: S, texture_cfg: TexConfig) -> Result<Rc<Texture>, TextureError> {
         // Generate the asset path
-        let mut tex_path = self.asset_path.clone();
+        let mut tex_path = self.asset_root.clone();
         tex_path.push("textures");
         tex_path.push(texture_name);
 
@@ -100,7 +100,7 @@ impl AssetContainer {
     }
 
     pub fn add_cubemap<S: AsRef<Path>, V: ToString>(&mut self, name: V, cm_location: S, texture_cfg: TexConfig) -> Result<Rc<Texture>, TextureError> {
-        let mut tex_path = self.asset_path.clone();
+        let mut tex_path = self.asset_root.clone();
         tex_path.push("textures");
         tex_path.push(cm_location.as_ref());
 

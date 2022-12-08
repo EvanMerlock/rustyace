@@ -1,5 +1,5 @@
 use crate::types::*;
-use crate::gl;
+use ace_gl_types::gl;
 use std::rc::Rc;
 use tobj;
 use std::path::Path;
